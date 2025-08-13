@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rank_preserving_calibration"
-version = "0.1.0"
+version = "0.2.0"
 description = "Rank-preserving calibration of multiclass probabilities via Dykstra's alternating projections."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -30,5 +30,5 @@ classifiers = [
 ]
 
 [project.urls]
-"Source" = "https://github.com/finite-sample/rank_preserving_calibration"
-"Issues" = "https://github.com/finite-sample/rank_preserving_calibration"
+"Source" = "https://github.com/"
+"Issues" = "https://github.com/"

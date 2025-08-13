@@ -183,6 +183,7 @@ def _project_column_isotonic_sum(
 def admm_rank_preserving_simplex_marginals(
     P: np.ndarray,
     M: np.ndarray,
+    geometry: str = 'euclidean',
     max_iters: int = 3000,
     tol: float = 1e-7,
     verbose: bool = False,
@@ -254,6 +255,17 @@ def admm_rank_preserving_simplex_marginals(
     M = np.asarray(M, dtype=np.float64)
     if M.ndim != 1 or M.size != J:
         raise ValueError("M must be a 1‑D array with length equal to P.shape[1]")
+    # Choose projection functions based on geometry
+    geometry = geometry.lower()
+    if geometry not in ('euclidean', 'kl'):
+        raise ValueError(f"Invalid geometry '{geometry}'. Use 'euclidean' or 'kl'.")
+    if geometry == 'euclidean':
+        row_project = _project_row_simplex
+        col_project = _project_column_isotonic_sum
+    else:
+        row_project = _project_row_simplex_kl  # defined below
+        col_project = _project_column_isotonic_sum_kl  # defined below
+
     # Initial values
     Q = P.copy()
     U = np.zeros_like(P, dtype=np.float64)
@@ -277,14 +289,14 @@ def admm_rank_preserving_simplex_marginals(
         Q_prev = Q.copy()
         # Projection onto C1 (row simplex)
         Y = Q + U
-        Q = _project_row_simplex(Y)
+        Q = row_project(Y)
         U = Y - Q
         # Projection onto C2 (column isotonic with sum)
         Y = Q + V
-        # Project each column independently
+        # Project each column independently using appropriate geometry
         Q_cols = np.empty_like(Q, dtype=np.float64)
         for j in range(J):
-            Q_cols[:, j] = _project_column_isotonic_sum(Y[:, j], P[:, j], M[j])
+            Q_cols[:, j] = col_project(Y[:, j], P[:, j], M[j])
         Q = Q_cols
         V = Y - Q
         # Check convergence
@@ -317,3 +329,88 @@ def admm_rank_preserving_simplex_marginals(
         return Q, info
     else:
         return Q, {}
+
+# -- Additional helper functions for KL geometry --
+
+def _project_row_simplex_kl(rows: np.ndarray, eps: float = 1e-12) -> np.ndarray:
+    """Project rows onto the probability simplex under KL (I-divergence) geometry.
+
+    This projection normalises each row by its sum.  Values are clipped to
+    a small ``eps`` to avoid division by zero.  The result has non-negative
+    entries summing to one in each row.
+
+    Parameters
+    ----------
+    rows : np.ndarray
+        Array of shape ``(N, J)`` to be projected.
+    eps : float, optional
+        Lower bound for values to avoid numerical issues.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape ``(N, J)`` with each row summing to one.
+    """
+    Q = np.maximum(rows, eps)
+    row_sums = Q.sum(axis=1, keepdims=True)
+    row_sums[row_sums < eps] = eps
+    Q = Q / row_sums
+    return Q
+
+def _kl_isotonic_pav(y: np.ndarray, eps: float = 1e-12) -> np.ndarray:
+    """Perform KL isotonic regression on a 1-D array.
+
+    This function solves the isotonic regression problem under the
+    I-divergence geometry by applying isotonic regression to the log of the
+    values.  It ensures the output is non-decreasing when the input is
+    ordered.
+
+    Parameters
+    ----------
+    y : np.ndarray
+        1-D array of positive values.
+    eps : float, optional
+        Minimum value to clip ``y`` for stability.
+
+    Returns
+    -------
+    np.ndarray
+        A 1-D array of the same length as ``y`` representing the projection.
+    """
+    y_safe = np.maximum(y, eps)
+    log_y = np.log(y_safe)
+    log_iso = _isotonic_regression(log_y)
+    return np.exp(log_iso)
+
+def _project_column_isotonic_sum_kl(column: np.ndarray, P_column: np.ndarray, target_sum: float, eps: float = 1e-12) -> np.ndarray:
+    """Project a column under KL geometry onto isotonic sequences with fixed sum.
+
+    Parameters
+    ----------
+    column : np.ndarray
+        Current column vector.
+    P_column : np.ndarray
+        Original scores used to determine the order for monotonicity.
+    target_sum : float
+        Desired sum of the projected column.
+    eps : float, optional
+        Lower bound for values to avoid numerical issues.
+
+    Returns
+    -------
+    np.ndarray
+        Projected column satisfying the KL isotonic and sum constraints.
+    """
+    idx = np.argsort(P_column)
+    y = column[idx]
+    # KL isotonic projection
+    iso = _kl_isotonic_pav(y, eps=eps)
+    total = iso.sum()
+    if total <= eps:
+        # If iso sums to zero, return uniform distribution scaled to target_sum
+        iso_scaled = np.full_like(iso, target_sum / iso.size)
+    else:
+        iso_scaled = iso * (target_sum / total)
+    out = np.empty_like(column, dtype=np.float64)
+    out[idx] = iso_scaled
+    return out
