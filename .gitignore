@@ -1,2 +1,4 @@
 .DS_Store
 /rank_preserving_calibration.egg-info
+/examples/.ipynb_checkpoints
+/rank_preserving_calibration/__pycache__
