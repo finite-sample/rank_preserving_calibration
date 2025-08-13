@@ -1,6 +1,4 @@
-# rank_preserving_calibration
-
-**Rank‑preserving calibration of multiclass probabilities via Dykstra's alternating projections**
+## Rank Preserving Calibration of multiclass probabilities via Dykstra's alternating projections
 
 Survey statisticians and machine learning practitioners often need to adjust
 the predicted class probabilities from a classifier so that they match known
