@@ -1,7 +1,7 @@
 ## Rank Preserving Calibration of multiclass probabilities via Dykstra's alternating projections
 
-[![PyPI version](https://img.shields.io/pypi/v/onlinerake.svg)](https://pypi.org/project/rank_preserving_calibration/)
-[![PyPI Downloads](https://static.pepy.tech/badge/onlinerake)](https://pepy.tech/projects/rank_preserving_calibration)
+[![PyPI version](https://img.shields.io/pypi/v/rank_preserving_calibration.svg)](https://pypi.org/project/rank_preserving_calibration/)
+[![PyPI Downloads](https://static.pepy.tech/badge/rank_preserving_calibration)](https://pepy.tech/projects/rank_preserving_calibration)
 
 
 Survey statisticians and machine learning practitioners often need to adjust
