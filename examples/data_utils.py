@@ -1,8 +1,7 @@
-"""
-Utility functions for rank-preserving calibration.
+"""Data utilities for examples and tests.
 
-This module provides functions for generating synthetic test cases and
-analyzing calibration results.
+This module collects helper functions for generating synthetic datasets and
+analyzing calibration results used throughout the examples and test suite.
 """
 
 from typing import Optional, Tuple
