@@ -17,7 +17,7 @@ An **ADMM optimization** implementation is also provided as an alternative solve
 ## Installation
 
 ```bash
-pip install -e .
+pip install rank_preserving_calibration
 ```
 
 The only runtime dependency is `numpy`. Optional dependencies include `scipy` (for enhanced test case generation) and `matplotlib` (for examples).
