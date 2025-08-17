@@ -86,7 +86,6 @@ jobs:
         
         echo "" >> CHANGELOG.md
         echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$LAST_TAG...${GITHUB_REF#refs/tags/}" >> CHANGELOG.md
-
     - name: Create GitHub Release
       uses: actions/create-release@v1
       env:
