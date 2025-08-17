@@ -56,8 +56,7 @@ jobs:
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        # This uses PyPI's trusted publisher feature - no API tokens needed!
-        # Just configure it once in PyPI settings
+        skip-existing: true
 
   github-release:
     needs: [test, release]
