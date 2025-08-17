@@ -1,12 +1,19 @@
-"""
-Utility functions for rank-preserving calibration.
+"""Helper utilities used in examples and tests.
 
-This module provides functions for generating synthetic test cases and
-analyzing calibration results.
+This module contains functions for generating synthetic data sets and
+analyzing calibration results.  They are kept outside of the main
+package to avoid pulling example dependencies into the installation.
 """
 
 from typing import Optional, Tuple
 import numpy as np
+
+__all__ = [
+    "create_test_case",
+    "create_realistic_classifier_case",
+    "create_survey_reweighting_case",
+    "analyze_calibration_result",
+]
 
 
 def create_test_case(case_type: str, N: int = 50, J: int = 4, 
@@ -346,3 +353,4 @@ def analyze_calibration_result(P: np.ndarray, result, M: np.ndarray) -> dict:
             "final_change": result.final_change
         }
     }
+

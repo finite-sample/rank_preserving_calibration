@@ -7,13 +7,13 @@ Run with: python -m pytest tests/
 import numpy as np
 import pytest
 from rank_preserving_calibration import (
-    calibrate_dykstra, 
+    calibrate_dykstra,
     calibrate_admm,
-    create_test_case,
     CalibrationResult,
     ADMMResult,
-    CalibrationError
+    CalibrationError,
 )
+from examples.data_helpers import create_test_case
 
 
 class TestBasicFunctionality:
