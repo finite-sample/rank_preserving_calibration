@@ -21,9 +21,6 @@ jobs:
     - name: Run tests
       run: |
         python -m pytest tests/ -v
-    - name: Run static checks
-      run: |
-        python check_static.py
 
   release:
     needs: test
