@@ -227,16 +227,6 @@ def create_survey_reweighting_case(N: int = 1000, seed: Optional[int] = None) ->
     Tuple[np.ndarray, np.ndarray, dict]
         P (survey responses), M (target demographics), info dict.
     """
-    # Optional scipy import
-    try:
-        from scipy.stats import dirichlet
-    except ImportError:
-        class dirichlet:
-            @staticmethod
-            def rvs(alpha, size=1):
-                samples = np.random.gamma(alpha, size=(size, len(alpha)))
-                return samples / samples.sum(axis=1, keepdims=True)
-    
     if seed is not None:
         np.random.seed(seed)
     
