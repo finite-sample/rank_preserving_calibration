@@ -315,8 +315,8 @@ def analyze_calibration_result(P: np.ndarray, result, M: np.ndarray) -> dict:
     calibrated_confidence = np.mean(np.max(Q, axis=1))
     
     # Distribution changes
-    original_entropy = np.mean([-np.sum(P * np.log(P + 1e-10), axis=1)])
-    calibrated_entropy = np.mean([-np.sum(Q * np.log(Q + 1e-10), axis=1)])
+    original_entropy = np.mean(-np.sum(P * np.log(P + 1e-10), axis=1))
+    calibrated_entropy = np.mean(-np.sum(Q * np.log(Q + 1e-10), axis=1))
     
     # Marginal correction magnitude
     marginal_correction = np.abs(P.sum(axis=0) - M).sum()
