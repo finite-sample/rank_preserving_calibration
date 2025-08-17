@@ -6,3 +6,4 @@
 /dist
 /test_env
 /tests/__pycache__
+/examples/__pycache__
