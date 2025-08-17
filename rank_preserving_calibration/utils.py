@@ -46,22 +46,21 @@ def create_test_case(case_type: str, N: int = 50, J: int = 4,
     """
     # Optional scipy import for test case generation
     try:
-        from scipy.stats import dirichlet
-    except ImportError:
-        # Fallback implementation
-        class dirichlet:
-            @staticmethod
-            def rvs(alpha, size=1):
-                samples = np.random.gamma(alpha, size=(size, len(alpha)))
-                return samples / samples.sum(axis=1, keepdims=True)
-    
-    if seed is not None:
-        np.random.seed(seed)
+        from scipy.stats import dirichlet as sp_dirichlet
+    except ImportError:  # pragma: no cover - SciPy may not be installed
+        sp_dirichlet = None
+
+    rng = np.random.default_rng(seed)
+
+    def _dirichlet(alpha, size):
+        if sp_dirichlet is not None:
+            return sp_dirichlet.rvs(alpha, size=size, random_state=rng)
+        return rng.dirichlet(alpha, size=size)
     
     if case_type == 'random':
         concentration = kwargs.get('concentration', 1.0)
         alpha = np.full(J, concentration)
-        P = dirichlet.rvs(alpha, size=N)
+        P = _dirichlet(alpha, size=N)
         M = np.full(J, N / J)  # Equal marginals
         
     elif case_type == 'skewed':
@@ -69,7 +68,7 @@ def create_test_case(case_type: str, N: int = 50, J: int = 4,
         alpha = np.ones(J)
         alpha[0] *= skew_factor  # Make first class more likely
         alpha[-1] *= skew_factor  # Make last class more likely
-        P = dirichlet.rvs(alpha, size=N)
+        P = _dirichlet(alpha, size=N)
         M = np.full(J, N / J)
         
     elif case_type == 'linear':
@@ -84,7 +83,7 @@ def create_test_case(case_type: str, N: int = 50, J: int = 4,
             
             # Add noise
             if noise_level > 0:
-                trend += noise_level * np.random.randn(N)
+                trend += noise_level * rng.standard_normal(N)
             
             trend = np.clip(trend, 0.01, 0.99)
             P[:, j] = trend
@@ -96,12 +95,12 @@ def create_test_case(case_type: str, N: int = 50, J: int = 4,
     elif case_type == 'challenging':
         infeasibility_level = kwargs.get('infeasibility_level', 0.2)
         # Create extreme probabilities using beta distribution
-        P = np.random.beta(0.3, 0.3, size=(N, J))
+        P = rng.beta(0.3, 0.3, size=(N, J))
         P = P / P.sum(axis=1, keepdims=True)
         
         # Create target marginals with controlled infeasibility
         base_marginals = N / J * np.ones(J)
-        bias = np.random.uniform(-0.5, 0.5, J)
+        bias = rng.uniform(-0.5, 0.5, J)
         bias = bias - bias.mean()  # Center the bias
         M = base_marginals + infeasibility_level * N * bias
         M = np.maximum(M, 0.1)  # Ensure positive marginals
@@ -139,16 +138,16 @@ def create_realistic_classifier_case(N: int = 500, J: int = 4,
     """
     # Optional scipy import
     try:
-        from scipy.stats import dirichlet
-    except ImportError:
-        class dirichlet:
-            @staticmethod
-            def rvs(alpha, size=1):
-                samples = np.random.gamma(alpha, size=(size, len(alpha)))
-                return samples / samples.sum(axis=1, keepdims=True)
-    
-    if seed is not None:
-        np.random.seed(seed)
+        from scipy.stats import dirichlet as sp_dirichlet
+    except ImportError:  # pragma: no cover - SciPy may not be installed
+        sp_dirichlet = None
+
+    rng = np.random.default_rng(seed)
+
+    def _dirichlet(alpha, size):
+        if sp_dirichlet is not None:
+            return sp_dirichlet.rvs(alpha, size=size, random_state=rng)
+        return rng.dirichlet(alpha, size=size)
     
     # Simulate true class labels with realistic imbalance
     if J <= 4:
@@ -159,7 +158,7 @@ def create_realistic_classifier_case(N: int = 500, J: int = 4,
     
     true_class_probs = base_probs / base_probs.sum()
     
-    true_labels = np.random.choice(J, size=N, p=true_class_probs)
+    true_labels = rng.choice(J, size=N, p=true_class_probs)
     M = np.bincount(true_labels, minlength=J).astype(float)
     
     # Generate classifier predictions with systematic bias
@@ -169,25 +168,25 @@ def create_realistic_classifier_case(N: int = 500, J: int = 4,
         true_class = true_labels[i]
         
         if miscalibration_type == "overconfident":
-            correct_prob = np.random.beta(8, 2)  # High confidence when correct
+            correct_prob = rng.beta(8, 2)  # High confidence when correct
             remaining = 1 - correct_prob
-            other_probs = dirichlet.rvs([0.5] * (J-1), size=1)[0] * remaining
+            other_probs = _dirichlet([0.5] * (J-1), size=1)[0] * remaining
             
         elif miscalibration_type == "underconfident":
-            correct_prob = np.random.beta(2, 2) * 0.6 + 0.3  # 0.3 to 0.9 range
+            correct_prob = rng.beta(2, 2) * 0.6 + 0.3  # 0.3 to 0.9 range
             remaining = 1 - correct_prob
-            other_probs = dirichlet.rvs([1.5] * (J-1), size=1)[0] * remaining
+            other_probs = _dirichlet([1.5] * (J-1), size=1)[0] * remaining
             
         elif miscalibration_type == "biased":
             if true_class == 0:  # Underdetects class 0
-                correct_prob = np.random.beta(2, 3)
+                correct_prob = rng.beta(2, 3)
             elif true_class == 1:  # Overdetects class 1
-                correct_prob = np.random.beta(5, 1)
+                correct_prob = rng.beta(5, 1)
             else:
-                correct_prob = np.random.beta(3, 2)
+                correct_prob = rng.beta(3, 2)
                 
             remaining = 1 - correct_prob
-            other_probs = dirichlet.rvs([1] * (J-1), size=1)[0] * remaining
+            other_probs = _dirichlet([1] * (J-1), size=1)[0] * remaining
         
         # Build probability vector
         prob_vector = np.zeros(J)
@@ -229,22 +228,22 @@ def create_survey_reweighting_case(N: int = 1000, seed: Optional[int] = None) ->
     """
     # Optional scipy import
     try:
-        from scipy.stats import dirichlet
-    except ImportError:
-        class dirichlet:
-            @staticmethod
-            def rvs(alpha, size=1):
-                samples = np.random.gamma(alpha, size=(size, len(alpha)))
-                return samples / samples.sum(axis=1, keepdims=True)
-    
-    if seed is not None:
-        np.random.seed(seed)
+        from scipy.stats import dirichlet as sp_dirichlet
+    except ImportError:  # pragma: no cover - SciPy may not be installed
+        sp_dirichlet = None
+
+    rng = np.random.default_rng(seed)
+
+    def _dirichlet(alpha, size):
+        if sp_dirichlet is not None:
+            return sp_dirichlet.rvs(alpha, size=size, random_state=rng)
+        return rng.dirichlet(alpha, size=size)
     
     # Define demographic categories: [Urban, Suburban, Rural, Other]
     true_demographics = np.array([0.35, 0.45, 0.18, 0.02])
     sample_demographics = np.array([0.55, 0.30, 0.12, 0.03])  # Biased toward urban
     
-    respondent_types = np.random.choice(4, size=N, p=sample_demographics)
+    respondent_types = rng.choice(4, size=N, p=sample_demographics)
     
     # Response patterns differ by demographic group
     response_patterns = {
@@ -259,7 +258,7 @@ def create_survey_reweighting_case(N: int = 1000, seed: Optional[int] = None) ->
         demo_type = respondent_types[i]
         base_probs = np.array(response_patterns[demo_type])
         # Add individual variation
-        noise = np.random.dirichlet([10] * 4) * 0.3
+        noise = _dirichlet([10] * 4, size=1)[0] * 0.3
         individual_probs = 0.7 * base_probs + 0.3 * noise
         P[i] = individual_probs / individual_probs.sum()
     
