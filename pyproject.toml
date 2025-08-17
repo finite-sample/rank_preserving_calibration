@@ -34,7 +34,6 @@ all = ["pytest>=6.0", "pytest-cov", "scipy>=1.0", "matplotlib>=3.0", "jupyter", 
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --cov=rank_preserving_calibration"
 
 [project.urls]
 "Homepage" = "https://github.com/finite_sample/rank-preserving-calibration"
