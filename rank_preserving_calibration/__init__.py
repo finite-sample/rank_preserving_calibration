@@ -7,7 +7,8 @@ algorithms including Dykstra's alternating projections and ADMM optimization.
 Example
 -------
 >>> import numpy as np
->>> from rank_preserving_calibration import calibrate_dykstra, create_test_case
+>>> from rank_preserving_calibration import calibrate_dykstra
+>>> from examples.data_helpers import create_test_case
 >>> 
 >>> # Generate test data
 >>> P, M = create_test_case("random", N=100, J=4, seed=42)
@@ -32,13 +33,6 @@ from .calibration import (
     CalibrationError
 )
 
-from .utils import (
-    create_test_case,
-    create_realistic_classifier_case,
-    create_survey_reweighting_case,
-    analyze_calibration_result
-)
-
 # Legacy aliases for backward compatibility
 calibrate_rank_preserving = calibrate_dykstra
 admm_rank_preserving_simplex_marginals = calibrate_dykstra
@@ -53,12 +47,6 @@ __all__ = [
     "CalibrationResult",
     "ADMMResult",
     "CalibrationError",
-    
-    # Utility functions
-    "create_test_case",
-    "create_realistic_classifier_case", 
-    "create_survey_reweighting_case",
-    "analyze_calibration_result",
     
     # Legacy aliases
     "calibrate_rank_preserving",

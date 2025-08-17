@@ -60,9 +60,9 @@ Calibrate using Dykstra's alternating projections (recommended).
 
 Calibrate using ADMM optimization with penalty parameter `rho`.
 
-### `create_test_case(case_type, N, J, **kwargs)`
+### `create_test_case(case_type, N, J, **kwargs)` (in `examples.data_helpers`)
 
-Generate synthetic test data for various scenarios.
+Generate synthetic test data for various scenarios used in examples and tests.
 
 ## Arguments
 

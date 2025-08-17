@@ -41,3 +41,4 @@ Documentation = "https://github.com/finite_sample/rank_preserving_calibration#re
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["rank_preserving_calibration*"]
+exclude = ["examples*"]

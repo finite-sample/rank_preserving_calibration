@@ -1,5 +1,5 @@
 import numpy as np
-from rank_preserving_calibration import (
+from examples.data_helpers import (
     create_test_case,
     create_realistic_classifier_case,
     create_survey_reweighting_case,

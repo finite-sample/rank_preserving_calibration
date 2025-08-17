@@ -3,7 +3,7 @@
 import numpy as np
 from types import SimpleNamespace
 
-from rank_preserving_calibration import analyze_calibration_result
+from examples.data_helpers import analyze_calibration_result
 
 
 def test_entropy_regression():
