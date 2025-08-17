@@ -22,7 +22,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Topic :: Scientific/Engineering :: Mathematics",
@@ -30,5 +29,5 @@ classifiers = [
 ]
 
 [project.urls]
-"Source" = "https://github.com/"
-"Issues" = "https://github.com/"
+"Source" = "https://github.com/finite_sample/rank_preserving_calibration"
+"Issues" = "https://github.com/finite_sample/rank_preserving_calibration"
