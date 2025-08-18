@@ -1,4 +1,4 @@
-## Rank Preserving Calibration of multiclass probabilities via Dykstra's alternating projections
+## Rank Preserving Calibration of Multiclass Probabilities
 
 [![PyPI version](https://img.shields.io/pypi/v/rank_preserving_calibration.svg)](https://pypi.org/project/rank_preserving_calibration/)
 [![PyPI Downloads](https://static.pepy.tech/badge/rank_preserving_calibration)](https://pepy.tech/projects/rank_preserving_calibration)
