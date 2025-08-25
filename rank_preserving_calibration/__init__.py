@@ -33,6 +33,13 @@ from .calibration import (
     CalibrationError
 )
 
+# Import nearly isotonic utilities
+from .nearly import (
+    project_near_isotonic_euclidean,
+    prox_near_isotonic,
+    prox_near_isotonic_with_sum
+)
+
 # Legacy aliases for backward compatibility
 calibrate_rank_preserving = calibrate_dykstra
 admm_rank_preserving_simplex_marginals = calibrate_dykstra
@@ -47,6 +54,11 @@ __all__ = [
     "CalibrationResult",
     "ADMMResult",
     "CalibrationError",
+    
+    # Nearly isotonic functions
+    "project_near_isotonic_euclidean",
+    "prox_near_isotonic",
+    "prox_near_isotonic_with_sum",
     
     # Legacy aliases
     "calibrate_rank_preserving",

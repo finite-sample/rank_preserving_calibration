@@ -7,3 +7,5 @@
 /test_env
 /tests/__pycache__
 /examples/__pycache__
+/examples/lowrank_gls/.ipynb_checkpoints
+/examples/lowrank_gls/__pycache__

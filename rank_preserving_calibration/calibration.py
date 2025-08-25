@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Dict, Union
 
 import numpy as np
+from .nearly import project_near_isotonic_euclidean, prox_near_isotonic, prox_near_isotonic_with_sum
 
 
 @dataclass
@@ -220,31 +221,46 @@ def _project_column_isotonic_sum(column: np.ndarray,
                                 P_column: np.ndarray,
                                 target_sum: float,
                                 rtol: float = 1e-12,
-                                eps: float = 1e-15) -> np.ndarray:
-    """Project column onto isotonic constraint with fixed sum."""
+                                eps: float = 1e-15,
+                                nearly: Optional[Dict] = None) -> np.ndarray:
+    """Project column onto isotonic constraint with fixed sum.
+    
+    Parameters
+    ----------
+    nearly : dict, optional
+        Nearly isotonic parameters. If provided, should contain:
+        - "mode": "epsilon" for slack-based projection
+        - "eps": slack parameter for near-isotonic constraint
+    """
     if column.size == 0:
         return column.copy()
         
     idx = np.argsort(P_column)
     y = column[idx]
     
-    iso = _isotonic_regression(y, rtol=rtol)
-    
-    current_sum = iso.sum()
-    n = iso.size
-    
-    if current_sum > eps:
-        iso_scaled = iso * (target_sum / current_sum)
+    if nearly is not None and nearly.get("mode") == "epsilon":
+        # Use nearly isotonic projection with epsilon slack
+        slack_eps = nearly.get("eps", 1e-3)
+        iso_scaled = project_near_isotonic_euclidean(y, slack_eps, sum_target=target_sum)
     else:
-        iso_scaled = np.full_like(iso, target_sum / n)
-    
-    iso_scaled = np.maximum(iso_scaled, 0.0)
-    final_sum = iso_scaled.sum()
-    
-    if final_sum > eps:
-        iso_scaled *= (target_sum / final_sum)
-    else:
-        iso_scaled[:] = target_sum / n
+        # Standard isotonic projection
+        iso = _isotonic_regression(y, rtol=rtol)
+        
+        current_sum = iso.sum()
+        n = iso.size
+        
+        if current_sum > eps:
+            iso_scaled = iso * (target_sum / current_sum)
+        else:
+            iso_scaled = np.full_like(iso, target_sum / n)
+        
+        iso_scaled = np.maximum(iso_scaled, 0.0)
+        final_sum = iso_scaled.sum()
+        
+        if final_sum > eps:
+            iso_scaled *= (target_sum / final_sum)
+        else:
+            iso_scaled[:] = target_sum / n
     
     projected = np.empty_like(column, dtype=np.float64)
     projected[idx] = iso_scaled
@@ -288,7 +304,8 @@ def calibrate_dykstra(
     verbose: bool = False,
     callback: Optional[Callable[[int, float, np.ndarray], bool]] = None,
     detect_cycles: bool = True,
-    cycle_window: int = 10
+    cycle_window: int = 10,
+    nearly: Optional[Dict] = None
 ) -> CalibrationResult:
     """Calibrate using Dykstra's alternating projections.
     
@@ -317,6 +334,10 @@ def calibrate_dykstra(
         Enable cycle detection.
     cycle_window : int, default 10
         Window for cycle detection.
+    nearly : dict, optional
+        Nearly isotonic parameters. If provided, should contain:
+        - "mode": "epsilon" for epsilon-slack near-isotonic constraints
+        - "eps": slack parameter (default 1e-3)
         
     Returns
     -------
@@ -350,7 +371,7 @@ def calibrate_dykstra(
         Y = Q + V
         for j in range(J):
             Q[:, j] = _project_column_isotonic_sum(
-                Y[:, j], P[:, j], M[j], rtol=rtol
+                Y[:, j], P[:, j], M[j], rtol=rtol, nearly=nearly
             )
         V = Y - Q
         
@@ -412,7 +433,8 @@ def calibrate_admm(
     tol: float = 1e-6,
     rtol: float = 1e-12,
     feasibility_tol: float = 0.1,
-    verbose: bool = False
+    verbose: bool = False,
+    nearly: Optional[Dict] = None
 ) -> ADMMResult:
     """Calibrate using ADMM optimization.
     
@@ -437,6 +459,10 @@ def calibrate_admm(
         Feasibility tolerance.
     verbose : bool, default False
         Print progress.
+    nearly : dict, optional
+        Nearly isotonic parameters. If provided, should contain:
+        - "mode": "lambda" for lambda-penalty near-isotonic constraints
+        - "lam": penalty parameter for isotonicity violations (default 1.0)
         
     Returns
     -------
@@ -469,10 +495,21 @@ def calibrate_admm(
         Q_unconstrained = (P + rho * (row_correction + col_correction)) / (1 + 2*rho)
         
         # Apply rank-preserving and non-negativity constraints
-        for j in range(J):
-            idx = np.argsort(P[:, j])
-            iso_vals = _isotonic_regression(Q_unconstrained[idx, j], rtol=rtol)
-            Q_unconstrained[idx, j] = iso_vals
+        if nearly is not None and nearly.get("mode") == "lambda":
+            # Use nearly isotonic prox with lambda penalty
+            lam = nearly.get("lam", 1.0)
+            for j in range(J):
+                idx = np.argsort(P[:, j])
+                v_sorted = Q_unconstrained[idx, j]
+                # Note: prox handles the sum constraint internally via shift
+                iso_vals = prox_near_isotonic(v_sorted, lam)
+                Q_unconstrained[idx, j] = iso_vals
+        else:
+            # Standard isotonic regression
+            for j in range(J):
+                idx = np.argsort(P[:, j])
+                iso_vals = _isotonic_regression(Q_unconstrained[idx, j], rtol=rtol)
+                Q_unconstrained[idx, j] = iso_vals
             
         Q = np.maximum(Q_unconstrained, 0.0)
         
