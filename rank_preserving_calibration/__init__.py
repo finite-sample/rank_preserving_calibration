@@ -20,7 +20,7 @@ Example
 """
 
 # Version info
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __author__ = "Gaurav Sood"
 __email__ = "gsood07@gmail.com"
 

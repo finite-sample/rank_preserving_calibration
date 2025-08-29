@@ -17,6 +17,7 @@ The package projects probability matrices onto the intersection of:
 
 ### Core Module Structure
 - `rank_preserving_calibration/calibration.py`: Main algorithms and result classes
+- `rank_preserving_calibration/nearly.py`: Nearly isotonic projection utilities
 - `rank_preserving_calibration/__init__.py`: Public API exports and legacy aliases
 - `examples/data_helpers.py`: Synthetic data generation utilities (not part of main package)
 - `tests/`: Test suite using pytest
@@ -143,8 +144,9 @@ result = calibrate_admm(P, M, nearly=nearly_params)
 ## CI/CD and Quality
 
 The repository uses GitHub Actions for CI with:
-- Python 3.10 testing environment
+- Python 3.10 testing environment  
 - Installation via `pip install -e ".[testing]"`
 - Test execution with `python -m pytest tests/ -v`
+- Automated workflows for both CI testing and releases
 
 No additional linting, formatting, or coverage tools are configured in the current setup.

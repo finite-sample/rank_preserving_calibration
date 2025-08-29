@@ -69,6 +69,8 @@ class ADMMResult:
         Maximum column sum error.
     max_rank_violation : float
         Maximum rank violation.
+    final_change : float
+        Final relative change between iterations.
     """
     Q: np.ndarray
     converged: bool
@@ -79,6 +81,7 @@ class ADMMResult:
     max_row_error: float
     max_col_error: float
     max_rank_violation: float
+    final_change: float
 
 
 class CalibrationError(Exception):
@@ -552,6 +555,12 @@ def calibrate_admm(
     if not converged and verbose:
         warnings.warn(f"ADMM failed to converge after {max_iters} iterations", UserWarning)
     
+    # Calculate final change
+    if iteration > 0:
+        final_change = float(np.linalg.norm(Q - Q_prev) / (1.0 + np.linalg.norm(Q_prev)))
+    else:
+        final_change = float('inf')
+    
     # Final diagnostics
     row_sums = Q.sum(axis=1)
     col_sums = Q.sum(axis=0)
@@ -568,7 +577,8 @@ def calibrate_admm(
         dual_residuals=dual_residuals,
         max_row_error=max_row_error,
         max_col_error=max_col_error,
-        max_rank_violation=max_rank_violation
+        max_rank_violation=max_rank_violation,
+        final_change=final_change
     )
 
 
