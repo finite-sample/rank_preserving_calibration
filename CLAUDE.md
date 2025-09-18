@@ -141,6 +141,45 @@ result = calibrate_admm(P, M, nearly=nearly_params)
 - `rtol`: Relative tolerance for isotonic regression (1e-12)
 - `nearly`: Dict with "mode" ("epsilon" or "lambda") and parameters
 
+## Documentation
+
+The repository has comprehensive Sphinx documentation deployed to GitHub Pages:
+
+### Documentation Structure
+- **Source**: `docs/source/` contains all reStructuredText (.rst) files
+- **Configuration**: `docs/source/conf.py` with autodoc, RTD theme, and extensions
+- **Build**: `docs/Makefile` and `docs/make.bat` for local building
+- **Deployment**: `.github/workflows/docs.yml` automatically builds and deploys to GitHub Pages
+
+### Documentation Commands
+```bash
+# Install documentation dependencies
+pip install -e ".[docs]"
+
+# Build documentation locally
+cd docs && make html
+
+# View built docs
+open _build/html/index.html
+```
+
+### Key Documentation Files
+- `index.rst`: Main landing page with overview and quick start
+- `installation.rst`: Setup and dependency instructions
+- `quickstart.rst`: Practical usage examples
+- `theory.rst`: Mathematical foundations and algorithms
+- `examples.rst`: Real-world use cases and scenarios
+- `api.rst`: Complete API reference with autodoc
+- `changelog.rst`: Version history
+
+### Documentation URL
+**Live documentation**: https://finite-sample.github.io/rank_preserving_calibration/
+
+### Build Artifacts
+- Local builds create `docs/_build/` (excluded from git via .gitignore)
+- GitHub Actions builds and deploys automatically on push to main
+- No need to commit built HTML files
+
 ## CI/CD and Quality
 
 The repository uses GitHub Actions for CI with:
@@ -148,5 +187,6 @@ The repository uses GitHub Actions for CI with:
 - Installation via `pip install -e ".[testing]"`
 - Test execution with `python -m pytest tests/ -v`
 - Automated workflows for both CI testing and releases
+- Documentation building and deployment to GitHub Pages
 
 No additional linting, formatting, or coverage tools are configured in the current setup.
