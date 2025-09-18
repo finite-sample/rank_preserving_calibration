@@ -1,6 +1,7 @@
 ## Rank Preserving Calibration of Multiclass Probabilities
 
 [![PyPI version](https://img.shields.io/pypi/v/rank_preserving_calibration.svg)](https://pypi.org/project/rank_preserving_calibration/)
+[![Documentation](https://img.shields.io/badge/docs-github.io-blue)](https://finite-sample.github.io/rank_preserving_calibration/)
 [![PyPI Downloads](https://static.pepy.tech/badge/rank_preserving_calibration)](https://pepy.tech/projects/rank_preserving_calibration)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
