@@ -1,0 +1,714 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rank_preserving_calibration.calibration &mdash; rank_preserving_calibration 0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=c87aa342"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            rank_preserving_calibration
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../theory.html">Mathematical Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples and Use Cases</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">rank_preserving_calibration</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">rank_preserving_calibration.calibration</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for rank_preserving_calibration.calibration</h1><div class="highlight"><pre>
+<span></span><span class="c1"># SPDX-License-Identifier: MIT</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Robust rank-preserving multiclass probability calibration.</span>
+
+<span class="sd">This module provides numerically stable implementations of rank-preserving</span>
+<span class="sd">calibration algorithms including Dykstra&#39;s alternating projections and ADMM.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.nearly</span><span class="w"> </span><span class="kn">import</span> <span class="n">project_near_isotonic_euclidean</span><span class="p">,</span> <span class="n">prox_near_isotonic</span><span class="p">,</span> <span class="n">prox_near_isotonic_with_sum</span>
+
+
+<div class="viewcode-block" id="CalibrationResult">
+<a class="viewcode-back" href="../../api.html#rank_preserving_calibration.calibration.CalibrationResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CalibrationResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of rank-preserving calibration.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Q : np.ndarray</span>
+<span class="sd">        Calibrated probability matrix of shape (N, J).</span>
+<span class="sd">    converged : bool</span>
+<span class="sd">        Whether the algorithm converged within tolerance.</span>
+<span class="sd">    iterations : int</span>
+<span class="sd">        Number of iterations performed.</span>
+<span class="sd">    max_row_error : float</span>
+<span class="sd">        Maximum absolute deviation of row sums from 1.0.</span>
+<span class="sd">    max_col_error : float</span>
+<span class="sd">        Maximum absolute deviation of column sums from target.</span>
+<span class="sd">    max_rank_violation : float</span>
+<span class="sd">        Maximum rank violation across all columns.</span>
+<span class="sd">    final_change : float</span>
+<span class="sd">        Final relative change between iterations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Q</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">converged</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">iterations</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">max_row_error</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">max_col_error</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">max_rank_violation</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">final_change</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="ADMMResult">
+<a class="viewcode-back" href="../../api.html#rank_preserving_calibration.calibration.ADMMResult">[docs]</a>
+<span class="nd">@dataclass</span> 
+<span class="k">class</span><span class="w"> </span><span class="nc">ADMMResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result from ADMM optimization.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Q : np.ndarray</span>
+<span class="sd">        Calibrated probability matrix.</span>
+<span class="sd">    converged : bool</span>
+<span class="sd">        Whether ADMM converged.</span>
+<span class="sd">    iterations : int</span>
+<span class="sd">        Number of iterations performed.</span>
+<span class="sd">    objective_values : List[float]</span>
+<span class="sd">        Objective function values over iterations.</span>
+<span class="sd">    primal_residuals : List[float]</span>
+<span class="sd">        Primal residual norms over iterations.</span>
+<span class="sd">    dual_residuals : List[float]</span>
+<span class="sd">        Dual residual norms over iterations.</span>
+<span class="sd">    max_row_error : float</span>
+<span class="sd">        Maximum row sum error.</span>
+<span class="sd">    max_col_error : float</span>
+<span class="sd">        Maximum column sum error.</span>
+<span class="sd">    max_rank_violation : float</span>
+<span class="sd">        Maximum rank violation.</span>
+<span class="sd">    final_change : float</span>
+<span class="sd">        Final relative change between iterations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Q</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">converged</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">iterations</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">objective_values</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">primal_residuals</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">dual_residuals</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">max_row_error</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">max_col_error</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">max_rank_violation</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">final_change</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="CalibrationError">
+<a class="viewcode-back" href="../../api.html#rank_preserving_calibration.calibration.CalibrationError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CalibrationError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Raised when calibration fails due to invalid inputs or numerical issues.&quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate_inputs</span><span class="p">(</span><span class="n">P</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">M</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">max_iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> 
+                    <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">feasibility_tol</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate all inputs to calibration functions.&quot;&quot;&quot;</span>
+    <span class="c1"># Validate P</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;P must be a numpy array&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">P</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;P must be a 2D array of shape (N, J)&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">P</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;P cannot be empty&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">P</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;P must not contain NaN or infinite values&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">P</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;P must contain non-negative values&quot;</span><span class="p">)</span>
+    
+    <span class="n">N</span><span class="p">,</span> <span class="n">J</span> <span class="o">=</span> <span class="n">P</span><span class="o">.</span><span class="n">shape</span>
+    <span class="k">if</span> <span class="n">J</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;P must have at least 2 columns (classes)&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Validate M</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;M must be a numpy array&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">M</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;M must be a 1D array&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">M</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="n">J</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;M must have length </span><span class="si">{</span><span class="n">J</span><span class="si">}</span><span class="s2"> to match P.shape[1]&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">M</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;M must not contain NaN or infinite values&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">M</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;M must contain non-negative values&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Check basic feasibility</span>
+    <span class="n">M_sum</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">M_sum</span> <span class="o">-</span> <span class="n">N</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">feasibility_tol</span> <span class="o">*</span> <span class="n">N</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Sum of M (</span><span class="si">{</span><span class="n">M_sum</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">) differs from N (</span><span class="si">{</span><span class="n">N</span><span class="si">}</span><span class="s2">) by &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">abs</span><span class="p">(</span><span class="n">M_sum</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">N</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">. Problem may be infeasible.&quot;</span><span class="p">,</span>
+            <span class="ne">UserWarning</span>
+        <span class="p">)</span>
+    
+    <span class="c1"># Validate other parameters</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">max_iters</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="n">max_iters</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;max_iters must be a positive integer&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tol</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="ow">or</span> <span class="n">tol</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;tol must be a positive number&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">feasibility_tol</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="ow">or</span> <span class="n">feasibility_tol</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CalibrationError</span><span class="p">(</span><span class="s2">&quot;feasibility_tol must be non-negative&quot;</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">N</span><span class="p">,</span> <span class="n">J</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_project_row_simplex</span><span class="p">(</span><span class="n">rows</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-15</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Project rows onto probability simplex with numerical stability.&quot;&quot;&quot;</span>
+    <span class="n">N</span><span class="p">,</span> <span class="n">J</span> <span class="o">=</span> <span class="n">rows</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">projected</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">v</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">cssv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span>
+        <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">J</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        
+        <span class="n">cond</span> <span class="o">=</span> <span class="n">u</span> <span class="o">-</span> <span class="n">cssv</span> <span class="o">/</span> <span class="n">ind</span> <span class="o">&gt;</span> <span class="n">eps</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">cond</span><span class="p">):</span>
+            <span class="n">rho</span> <span class="o">=</span> <span class="n">J</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rho</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">cond</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">cssv</span><span class="p">[</span><span class="n">rho</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">rho</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">theta</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        
+        <span class="n">sum_w</span> <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sum_w</span> <span class="o">&gt;</span> <span class="n">eps</span><span class="p">:</span>
+            <span class="n">w</span> <span class="o">/=</span> <span class="n">sum_w</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">w</span><span class="p">[:]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">J</span>
+            
+        <span class="n">projected</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">w</span>
+    
+    <span class="k">return</span> <span class="n">projected</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_isotonic_regression</span><span class="p">(</span><span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">rtol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-12</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Numerically stable isotonic regression using Pool Adjacent Violators.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">y</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">y</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        
+    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">size</span>
+    
+    <span class="n">z</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">abs_tol</span> <span class="o">=</span> <span class="n">rtol</span> <span class="o">*</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">z</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">abs_tol</span><span class="p">:</span>
+            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Pool blocks</span>
+            <span class="n">new_w</span> <span class="o">=</span> <span class="n">w</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">w</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">new_z</span> <span class="o">=</span> <span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">w</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">z</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">w</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">new_w</span>
+            <span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_z</span>
+            <span class="n">w</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_w</span>
+            
+            <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">n</span> <span class="o">-=</span> <span class="mi">1</span>
+            
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">i</span> <span class="o">-=</span> <span class="mi">1</span>
+    
+    <span class="c1"># Expand back to original length</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">expanded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">w</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">expanded</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">_simple_isotonic_fallback</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">expanded</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">MemoryError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_simple_isotonic_fallback</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_simple_isotonic_fallback</span><span class="p">(</span><span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simple fallback isotonic regression.&quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_project_column_isotonic_sum</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+                                <span class="n">P_column</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                                <span class="n">target_sum</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                                <span class="n">rtol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-12</span><span class="p">,</span>
+                                <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-15</span><span class="p">,</span>
+                                <span class="n">nearly</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Project column onto isotonic constraint with fixed sum.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nearly : dict, optional</span>
+<span class="sd">        Nearly isotonic parameters. If provided, should contain:</span>
+<span class="sd">        - &quot;mode&quot;: &quot;epsilon&quot; for slack-based projection</span>
+<span class="sd">        - &quot;eps&quot;: slack parameter for near-isotonic constraint</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">column</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">column</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">P_column</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">column</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="n">nearly</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">nearly</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mode&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;epsilon&quot;</span><span class="p">:</span>
+        <span class="c1"># Use nearly isotonic projection with epsilon slack</span>
+        <span class="n">slack_eps</span> <span class="o">=</span> <span class="n">nearly</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;eps&quot;</span><span class="p">,</span> <span class="mf">1e-3</span><span class="p">)</span>
+        <span class="n">iso_scaled</span> <span class="o">=</span> <span class="n">project_near_isotonic_euclidean</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">slack_eps</span><span class="p">,</span> <span class="n">sum_target</span><span class="o">=</span><span class="n">target_sum</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Standard isotonic projection</span>
+        <span class="n">iso</span> <span class="o">=</span> <span class="n">_isotonic_regression</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="n">rtol</span><span class="p">)</span>
+        
+        <span class="n">current_sum</span> <span class="o">=</span> <span class="n">iso</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">iso</span><span class="o">.</span><span class="n">size</span>
+        
+        <span class="k">if</span> <span class="n">current_sum</span> <span class="o">&gt;</span> <span class="n">eps</span><span class="p">:</span>
+            <span class="n">iso_scaled</span> <span class="o">=</span> <span class="n">iso</span> <span class="o">*</span> <span class="p">(</span><span class="n">target_sum</span> <span class="o">/</span> <span class="n">current_sum</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">iso_scaled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="n">iso</span><span class="p">,</span> <span class="n">target_sum</span> <span class="o">/</span> <span class="n">n</span><span class="p">)</span>
+        
+        <span class="n">iso_scaled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">iso_scaled</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">final_sum</span> <span class="o">=</span> <span class="n">iso_scaled</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">final_sum</span> <span class="o">&gt;</span> <span class="n">eps</span><span class="p">:</span>
+            <span class="n">iso_scaled</span> <span class="o">*=</span> <span class="p">(</span><span class="n">target_sum</span> <span class="o">/</span> <span class="n">final_sum</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">iso_scaled</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">target_sum</span> <span class="o">/</span> <span class="n">n</span>
+    
+    <span class="n">projected</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">projected</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">iso_scaled</span>
+    
+    <span class="k">return</span> <span class="n">projected</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_compute_rank_violation</span><span class="p">(</span><span class="n">Q</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">P</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute maximum rank violation across all columns.&quot;&quot;&quot;</span>
+    <span class="n">max_violation</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">N</span><span class="p">,</span> <span class="n">J</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">shape</span>
+    
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">J</span><span class="p">):</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">P</span><span class="p">[:,</span> <span class="n">j</span><span class="p">])</span>
+        <span class="n">q_sorted</span> <span class="o">=</span> <span class="n">Q</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">q_sorted</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">diffs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">q_sorted</span><span class="p">)</span>
+            <span class="n">violation</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="o">-</span><span class="n">diffs</span><span class="p">))</span>
+            <span class="n">max_violation</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_violation</span><span class="p">,</span> <span class="n">violation</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">max_violation</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_detect_cycling</span><span class="p">(</span><span class="n">Q_history</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">Q</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+                   <span class="n">cycle_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect if algorithm is cycling between solutions.&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">prev_Q</span> <span class="ow">in</span> <span class="n">Q_history</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">prev_Q</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="n">cycle_tol</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="n">cycle_tol</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<div class="viewcode-block" id="calibrate_dykstra">
+<a class="viewcode-back" href="../../api.html#rank_preserving_calibration.calibration.calibrate_dykstra">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calibrate_dykstra</span><span class="p">(</span>
+    <span class="n">P</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">M</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">max_iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3000</span><span class="p">,</span>
+    <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-7</span><span class="p">,</span>
+    <span class="n">rtol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-12</span><span class="p">,</span>
+    <span class="n">feasibility_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">callback</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">detect_cycles</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">cycle_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">nearly</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CalibrationResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calibrate using Dykstra&#39;s alternating projections.</span>
+<span class="sd">    </span>
+<span class="sd">    Projects between row simplex and column isotonic constraints using</span>
+<span class="sd">    Dykstra&#39;s method with memory terms to ensure convergence to intersection.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    P : np.ndarray</span>
+<span class="sd">        Input probability matrix of shape (N, J).</span>
+<span class="sd">    M : np.ndarray  </span>
+<span class="sd">        Target column sums of length J.</span>
+<span class="sd">    max_iters : int, default 3000</span>
+<span class="sd">        Maximum iterations.</span>
+<span class="sd">    tol : float, default 1e-7</span>
+<span class="sd">        Convergence tolerance.</span>
+<span class="sd">    rtol : float, default 1e-12</span>
+<span class="sd">        Relative tolerance for isotonic regression.</span>
+<span class="sd">    feasibility_tol : float, default 0.1</span>
+<span class="sd">        Tolerance for feasibility warning.</span>
+<span class="sd">    verbose : bool, default False</span>
+<span class="sd">        Print progress.</span>
+<span class="sd">    callback : callable, optional</span>
+<span class="sd">        Progress callback function.</span>
+<span class="sd">    detect_cycles : bool, default True</span>
+<span class="sd">        Enable cycle detection.</span>
+<span class="sd">    cycle_window : int, default 10</span>
+<span class="sd">        Window for cycle detection.</span>
+<span class="sd">    nearly : dict, optional</span>
+<span class="sd">        Nearly isotonic parameters. If provided, should contain:</span>
+<span class="sd">        - &quot;mode&quot;: &quot;epsilon&quot; for epsilon-slack near-isotonic constraints</span>
+<span class="sd">        - &quot;eps&quot;: slack parameter (default 1e-3)</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    CalibrationResult</span>
+<span class="sd">        Result with calibrated matrix and diagnostics.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">N</span><span class="p">,</span> <span class="n">J</span> <span class="o">=</span> <span class="n">_validate_inputs</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">max_iters</span><span class="p">,</span> <span class="n">tol</span><span class="p">,</span> <span class="n">feasibility_tol</span><span class="p">)</span>
+    
+    <span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    
+    <span class="c1"># Initialize Dykstra variables</span>
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">P</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">U</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>  <span class="c1"># Row simplex memory</span>
+    <span class="n">V</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>  <span class="c1"># Column constraint memory</span>
+    <span class="n">Q_prev</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    
+    <span class="n">Q_history</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">detect_cycles</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">converged</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">final_change</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">iteration</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_iters</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">copyto</span><span class="p">(</span><span class="n">Q_prev</span><span class="p">,</span> <span class="n">Q</span><span class="p">)</span>
+        
+        <span class="c1"># Project onto row simplex</span>
+        <span class="n">Y</span> <span class="o">=</span> <span class="n">Q</span> <span class="o">+</span> <span class="n">U</span>
+        <span class="n">Q</span> <span class="o">=</span> <span class="n">_project_row_simplex</span><span class="p">(</span><span class="n">Y</span><span class="p">)</span>
+        <span class="n">U</span> <span class="o">=</span> <span class="n">Y</span> <span class="o">-</span> <span class="n">Q</span>
+        
+        <span class="c1"># Project onto column constraints  </span>
+        <span class="n">Y</span> <span class="o">=</span> <span class="n">Q</span> <span class="o">+</span> <span class="n">V</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">J</span><span class="p">):</span>
+            <span class="n">Q</span><span class="p">[:,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">_project_column_isotonic_sum</span><span class="p">(</span>
+                <span class="n">Y</span><span class="p">[:,</span> <span class="n">j</span><span class="p">],</span> <span class="n">P</span><span class="p">[:,</span> <span class="n">j</span><span class="p">],</span> <span class="n">M</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">rtol</span><span class="o">=</span><span class="n">rtol</span><span class="p">,</span> <span class="n">nearly</span><span class="o">=</span><span class="n">nearly</span>
+            <span class="p">)</span>
+        <span class="n">V</span> <span class="o">=</span> <span class="n">Y</span> <span class="o">-</span> <span class="n">Q</span>
+        
+        <span class="c1"># Check convergence</span>
+        <span class="n">change_abs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">Q</span> <span class="o">-</span> <span class="n">Q_prev</span><span class="p">)</span>
+        <span class="n">norm_Q_prev</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">Q_prev</span><span class="p">)</span>
+        
+        <span class="n">final_change</span> <span class="o">=</span> <span class="n">change_abs</span> <span class="o">/</span> <span class="n">norm_Q_prev</span> <span class="k">if</span> <span class="n">norm_Q_prev</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">change_abs</span>
+            
+        <span class="k">if</span> <span class="n">final_change</span> <span class="o">&lt;</span> <span class="n">tol</span><span class="p">:</span>
+            <span class="n">converged</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dykstra converged at iteration </span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">break</span>
+            
+        <span class="c1"># Cycle detection</span>
+        <span class="k">if</span> <span class="n">detect_cycles</span> <span class="ow">and</span> <span class="n">iteration</span> <span class="o">&gt;</span> <span class="n">cycle_window</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_detect_cycling</span><span class="p">(</span><span class="n">Q_history</span><span class="p">,</span> <span class="n">Q</span><span class="p">):</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cycling detected at iteration </span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="ne">UserWarning</span><span class="p">)</span>
+                <span class="k">break</span>
+                
+            <span class="n">Q_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Q</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Q_history</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">cycle_window</span><span class="p">:</span>
+                <span class="n">Q_history</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="p">(</span><span class="n">iteration</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">iteration</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dykstra iteration </span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">: change = </span><span class="si">{</span><span class="n">final_change</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="n">callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">callback</span><span class="p">(</span><span class="n">iteration</span><span class="p">,</span> <span class="n">final_change</span><span class="p">,</span> <span class="n">Q</span><span class="p">):</span>
+                <span class="k">break</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">converged</span> <span class="ow">and</span> <span class="n">iteration</span> <span class="o">==</span> <span class="n">max_iters</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dykstra failed to converge after </span><span class="si">{</span><span class="n">max_iters</span><span class="si">}</span><span class="s2"> iterations&quot;</span><span class="p">,</span> <span class="ne">UserWarning</span><span class="p">)</span>
+    
+    <span class="c1"># Compute diagnostics</span>
+    <span class="n">row_sums</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">col_sums</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">max_row_error</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">row_sums</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)))</span>
+    <span class="n">max_col_error</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">col_sums</span> <span class="o">-</span> <span class="n">M</span><span class="p">)))</span>
+    <span class="n">max_rank_violation</span> <span class="o">=</span> <span class="n">_compute_rank_violation</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">P</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">CalibrationResult</span><span class="p">(</span>
+        <span class="n">Q</span><span class="o">=</span><span class="n">Q</span><span class="p">,</span>
+        <span class="n">converged</span><span class="o">=</span><span class="n">converged</span><span class="p">,</span>
+        <span class="n">iterations</span><span class="o">=</span><span class="n">iteration</span><span class="p">,</span>
+        <span class="n">max_row_error</span><span class="o">=</span><span class="n">max_row_error</span><span class="p">,</span>
+        <span class="n">max_col_error</span><span class="o">=</span><span class="n">max_col_error</span><span class="p">,</span>
+        <span class="n">max_rank_violation</span><span class="o">=</span><span class="n">max_rank_violation</span><span class="p">,</span>
+        <span class="n">final_change</span><span class="o">=</span><span class="n">final_change</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="calibrate_admm">
+<a class="viewcode-back" href="../../api.html#rank_preserving_calibration.calibration.calibrate_admm">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calibrate_admm</span><span class="p">(</span>
+    <span class="n">P</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">M</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">max_iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span>
+    <span class="n">rtol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-12</span><span class="p">,</span>
+    <span class="n">feasibility_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">nearly</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ADMMResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calibrate using ADMM optimization.</span>
+<span class="sd">    </span>
+<span class="sd">    Solves the constrained optimization problem using Alternating Direction</span>
+<span class="sd">    Method of Multipliers with augmented Lagrangian.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    P : np.ndarray</span>
+<span class="sd">        Input probability matrix.</span>
+<span class="sd">    M : np.ndarray</span>
+<span class="sd">        Target column sums.</span>
+<span class="sd">    rho : float, default 1.0</span>
+<span class="sd">        ADMM penalty parameter.</span>
+<span class="sd">    max_iters : int, default 1000</span>
+<span class="sd">        Maximum iterations.</span>
+<span class="sd">    tol : float, default 1e-6</span>
+<span class="sd">        Convergence tolerance.</span>
+<span class="sd">    rtol : float, default 1e-12</span>
+<span class="sd">        Relative tolerance for isotonic regression.</span>
+<span class="sd">    feasibility_tol : float, default 0.1</span>
+<span class="sd">        Feasibility tolerance.</span>
+<span class="sd">    verbose : bool, default False</span>
+<span class="sd">        Print progress.</span>
+<span class="sd">    nearly : dict, optional</span>
+<span class="sd">        Nearly isotonic parameters. If provided, should contain:</span>
+<span class="sd">        - &quot;mode&quot;: &quot;lambda&quot; for lambda-penalty near-isotonic constraints</span>
+<span class="sd">        - &quot;lam&quot;: penalty parameter for isotonicity violations (default 1.0)</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ADMMResult</span>
+<span class="sd">        Result with calibrated matrix and convergence history.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">N</span><span class="p">,</span> <span class="n">J</span> <span class="o">=</span> <span class="n">_validate_inputs</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">max_iters</span><span class="p">,</span> <span class="n">tol</span><span class="p">,</span> <span class="n">feasibility_tol</span><span class="p">)</span>
+    
+    <span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    
+    <span class="c1"># Initialize ADMM variables</span>
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">P</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">Z1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>  <span class="c1"># Row sum auxiliary variables</span>
+    <span class="n">Z2</span> <span class="o">=</span> <span class="n">M</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>    <span class="c1"># Column sum auxiliary variables</span>
+    <span class="n">lambda1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>  <span class="c1"># Row constraint multipliers</span>
+    <span class="n">lambda2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>  <span class="c1"># Column constraint multipliers</span>
+    
+    <span class="n">objective_values</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">primal_residuals</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">dual_residuals</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">iteration</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iters</span><span class="p">):</span>
+        <span class="n">Q_prev</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        
+        <span class="c1"># Q-update: solve quadratic subproblem</span>
+        <span class="n">row_correction</span> <span class="o">=</span> <span class="p">(</span><span class="n">Z1</span> <span class="o">-</span> <span class="n">lambda1</span><span class="o">/</span><span class="n">rho</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="n">J</span><span class="p">))</span>
+        <span class="n">col_correction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">N</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="o">@</span> <span class="p">(</span><span class="n">Z2</span> <span class="o">-</span> <span class="n">lambda2</span><span class="o">/</span><span class="n">rho</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="n">Q_unconstrained</span> <span class="o">=</span> <span class="p">(</span><span class="n">P</span> <span class="o">+</span> <span class="n">rho</span> <span class="o">*</span> <span class="p">(</span><span class="n">row_correction</span> <span class="o">+</span> <span class="n">col_correction</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">rho</span><span class="p">)</span>
+        
+        <span class="c1"># Apply rank-preserving and non-negativity constraints</span>
+        <span class="k">if</span> <span class="n">nearly</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">nearly</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mode&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;lambda&quot;</span><span class="p">:</span>
+            <span class="c1"># Use nearly isotonic prox with lambda penalty</span>
+            <span class="n">lam</span> <span class="o">=</span> <span class="n">nearly</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;lam&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">J</span><span class="p">):</span>
+                <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">P</span><span class="p">[:,</span> <span class="n">j</span><span class="p">])</span>
+                <span class="n">v_sorted</span> <span class="o">=</span> <span class="n">Q_unconstrained</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+                <span class="c1"># Note: prox handles the sum constraint internally via shift</span>
+                <span class="n">iso_vals</span> <span class="o">=</span> <span class="n">prox_near_isotonic</span><span class="p">(</span><span class="n">v_sorted</span><span class="p">,</span> <span class="n">lam</span><span class="p">)</span>
+                <span class="n">Q_unconstrained</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">iso_vals</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Standard isotonic regression</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">J</span><span class="p">):</span>
+                <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">P</span><span class="p">[:,</span> <span class="n">j</span><span class="p">])</span>
+                <span class="n">iso_vals</span> <span class="o">=</span> <span class="n">_isotonic_regression</span><span class="p">(</span><span class="n">Q_unconstrained</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">j</span><span class="p">],</span> <span class="n">rtol</span><span class="o">=</span><span class="n">rtol</span><span class="p">)</span>
+                <span class="n">Q_unconstrained</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">iso_vals</span>
+            
+        <span class="n">Q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">Q_unconstrained</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        
+        <span class="c1"># Z-updates (constraint projections)</span>
+        <span class="n">row_sums</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">col_sums</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        
+        <span class="n">Z1_prev</span> <span class="o">=</span> <span class="n">Z1</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">Z2_prev</span> <span class="o">=</span> <span class="n">Z2</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        
+        <span class="n">Z1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>  <span class="c1"># Row sums constrained to 1</span>
+        <span class="n">Z2</span> <span class="o">=</span> <span class="n">M</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>    <span class="c1"># Column sums constrained to M</span>
+        
+        <span class="c1"># Multiplier updates</span>
+        <span class="n">lambda1</span> <span class="o">+=</span> <span class="n">rho</span> <span class="o">*</span> <span class="p">(</span><span class="n">row_sums</span> <span class="o">-</span> <span class="n">Z1</span><span class="p">)</span>
+        <span class="n">lambda2</span> <span class="o">+=</span> <span class="n">rho</span> <span class="o">*</span> <span class="p">(</span><span class="n">col_sums</span> <span class="o">-</span> <span class="n">Z2</span><span class="p">)</span>
+        
+        <span class="c1"># Compute residuals</span>
+        <span class="n">primal_res</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">row_sums</span> <span class="o">-</span> <span class="n">Z1</span><span class="p">,</span> <span class="n">col_sums</span> <span class="o">-</span> <span class="n">Z2</span><span class="p">]))</span>
+        <span class="n">dual_res1</span> <span class="o">=</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">Z1</span> <span class="o">-</span> <span class="n">Z1_prev</span><span class="p">)</span>
+        <span class="n">dual_res2</span> <span class="o">=</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">Z2</span> <span class="o">-</span> <span class="n">Z2_prev</span><span class="p">)</span>
+        <span class="n">dual_res</span> <span class="o">=</span> <span class="n">dual_res1</span> <span class="o">+</span> <span class="n">dual_res2</span>
+        
+        <span class="n">obj_val</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">Q</span> <span class="o">-</span> <span class="n">P</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+        
+        <span class="n">objective_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj_val</span><span class="p">)</span>
+        <span class="n">primal_residuals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">primal_res</span><span class="p">)</span>
+        <span class="n">dual_residuals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dual_res</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="n">iteration</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ADMM iter </span><span class="si">{</span><span class="n">iteration</span><span class="si">}</span><span class="s2">: obj=</span><span class="si">{</span><span class="n">obj_val</span><span class="si">:</span><span class="s2">.3e</span><span class="si">}</span><span class="s2">, &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;primal=</span><span class="si">{</span><span class="n">primal_res</span><span class="si">:</span><span class="s2">.3e</span><span class="si">}</span><span class="s2">, dual=</span><span class="si">{</span><span class="n">dual_res</span><span class="si">:</span><span class="s2">.3e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">primal_res</span> <span class="o">&lt;</span> <span class="n">tol</span> <span class="ow">and</span> <span class="n">dual_res</span> <span class="o">&lt;</span> <span class="n">tol</span><span class="p">:</span>
+            <span class="n">converged</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">break</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">converged</span> <span class="o">=</span> <span class="kc">False</span>
+        
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">converged</span> <span class="ow">and</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ADMM failed to converge after </span><span class="si">{</span><span class="n">max_iters</span><span class="si">}</span><span class="s2"> iterations&quot;</span><span class="p">,</span> <span class="ne">UserWarning</span><span class="p">)</span>
+    
+    <span class="c1"># Calculate final change</span>
+    <span class="k">if</span> <span class="n">iteration</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">final_change</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">Q</span> <span class="o">-</span> <span class="n">Q_prev</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">Q_prev</span><span class="p">)))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">final_change</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># Final diagnostics</span>
+    <span class="n">row_sums</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">col_sums</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">max_row_error</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">row_sums</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)))</span>
+    <span class="n">max_col_error</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">col_sums</span> <span class="o">-</span> <span class="n">M</span><span class="p">)))</span>
+    <span class="n">max_rank_violation</span> <span class="o">=</span> <span class="n">_compute_rank_violation</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">P</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">ADMMResult</span><span class="p">(</span>
+        <span class="n">Q</span><span class="o">=</span><span class="n">Q</span><span class="p">,</span>
+        <span class="n">converged</span><span class="o">=</span><span class="n">converged</span><span class="p">,</span>
+        <span class="n">iterations</span><span class="o">=</span><span class="n">iteration</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">objective_values</span><span class="o">=</span><span class="n">objective_values</span><span class="p">,</span>
+        <span class="n">primal_residuals</span><span class="o">=</span><span class="n">primal_residuals</span><span class="p">,</span>
+        <span class="n">dual_residuals</span><span class="o">=</span><span class="n">dual_residuals</span><span class="p">,</span>
+        <span class="n">max_row_error</span><span class="o">=</span><span class="n">max_row_error</span><span class="p">,</span>
+        <span class="n">max_col_error</span><span class="o">=</span><span class="n">max_col_error</span><span class="p">,</span>
+        <span class="n">max_rank_violation</span><span class="o">=</span><span class="n">max_rank_violation</span><span class="p">,</span>
+        <span class="n">final_change</span><span class="o">=</span><span class="n">final_change</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># Convenience aliases for backward compatibility</span>
+<span class="n">calibrate_rank_preserving</span> <span class="o">=</span> <span class="n">calibrate_dykstra</span>
+<span class="n">admm_rank_preserving_simplex_marginals</span> <span class="o">=</span> <span class="n">calibrate_dykstra</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Gaurav Sood.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

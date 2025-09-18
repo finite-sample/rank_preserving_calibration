@@ -1,0 +1,319 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rank_preserving_calibration.nearly &mdash; rank_preserving_calibration 0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=c87aa342"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            rank_preserving_calibration
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../theory.html">Mathematical Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples and Use Cases</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">rank_preserving_calibration</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">rank_preserving_calibration.nearly</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for rank_preserving_calibration.nearly</h1><div class="highlight"><pre>
+<span></span><span class="c1"># rank_preserving_calibration/nearly.py</span>
+<span class="c1"># MIT license – keep consistent with repo.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Nearly isotonic regression utilities.</span>
+
+<span class="sd">This module provides &quot;relaxed&quot; isotonic constraints that allow for small </span>
+<span class="sd">violations of monotonicity, useful when strict isotonicity is too restrictive.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;project_near_isotonic_euclidean&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;prox_near_isotonic&quot;</span><span class="p">,</span> 
+    <span class="s2">&quot;prox_near_isotonic_with_sum&quot;</span>
+<span class="p">]</span>
+
+<span class="c1"># ---------- Utilities ----------</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_pav_increasing</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pool Adjacent Violators (L2) for a 1D sequence (no deps).&quot;&quot;&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">w</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="c1"># Start with each point as a block</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">weight</span> <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">idx_start</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>  <span class="c1"># block start indices</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">n</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">m</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-15</span><span class="p">:</span>  <span class="c1"># already nondecreasing</span>
+            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+        <span class="c1"># pool i and i+1</span>
+        <span class="n">new_w</span> <span class="o">=</span> <span class="n">weight</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">weight</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">new_v</span> <span class="o">=</span> <span class="p">(</span><span class="n">weight</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">weight</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">new_w</span>
+        <span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_v</span><span class="p">;</span> <span class="n">weight</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_w</span>
+        <span class="c1"># delete block i+1 by shifting left</span>
+        <span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span><span class="n">m</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">:</span><span class="n">m</span><span class="p">]</span>
+        <span class="n">weight</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span><span class="n">m</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">weight</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">:</span><span class="n">m</span><span class="p">]</span>
+        <span class="n">idx_start</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span><span class="n">m</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">idx_start</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">:</span><span class="n">m</span><span class="p">]</span>
+        <span class="n">m</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="c1"># backtrack if needed</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">i</span> <span class="o">-=</span> <span class="mi">1</span>
+    <span class="c1"># expand piecewise-constant blocks</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+        <span class="n">j0</span> <span class="o">=</span> <span class="n">idx_start</span><span class="p">[</span><span class="n">b</span><span class="p">]</span>
+        <span class="n">j1</span> <span class="o">=</span> <span class="n">idx_start</span><span class="p">[</span><span class="n">b</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">b</span><span class="o">+</span><span class="mi">1</span> <span class="o">&lt;</span> <span class="n">m</span> <span class="k">else</span> <span class="n">n</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">j0</span><span class="p">:</span><span class="n">j1</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="p">[</span><span class="n">b</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+<span class="c1"># ---------- (A) Hard–slack nearly isotonic projection ----------</span>
+
+<div class="viewcode-block" id="project_near_isotonic_euclidean">
+<a class="viewcode-back" href="../../api.html#rank_preserving_calibration.nearly.project_near_isotonic_euclidean">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">project_near_isotonic_euclidean</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">eps</span><span class="p">,</span> <span class="n">sum_target</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Project v onto the set { z : z_{i+1} &gt;= z_i - eps } in L2.</span>
+<span class="sd">    If sum_target is given, add a uniform shift to make sum(z)=sum_target.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    v : np.ndarray</span>
+<span class="sd">        Input vector to project.</span>
+<span class="sd">    eps : float</span>
+<span class="sd">        Slack parameter. Allows z[i+1] &gt;= z[i] - eps instead of strict z[i+1] &gt;= z[i].</span>
+<span class="sd">    sum_target : float, optional</span>
+<span class="sd">        If provided, shift result to have this sum.</span>
+<span class="sd">    weights : np.ndarray, optional</span>
+<span class="sd">        Weights for weighted projection (currently unused in this implementation).</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        Projected vector satisfying near-isotonic constraint.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="c1"># Reduce to standard isotonic via shift: w_i = v_i + i*eps</span>
+    <span class="c1"># Then isotonic(w) = w*, and z* = w* - i*eps</span>
+    <span class="n">ar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">v</span> <span class="o">+</span> <span class="n">eps</span> <span class="o">*</span> <span class="n">ar</span>
+    <span class="n">iz</span> <span class="o">=</span> <span class="n">_pav_increasing</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">weights</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">iz</span> <span class="o">-</span> <span class="n">eps</span> <span class="o">*</span> <span class="n">ar</span>
+    <span class="k">if</span> <span class="n">sum_target</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">z</span> <span class="o">+=</span> <span class="p">(</span><span class="n">sum_target</span> <span class="o">-</span> <span class="n">z</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="n">n</span>
+    <span class="k">return</span> <span class="n">z</span></div>
+
+
+<span class="c1"># ---------- (B) Penalized (lambda) nearly isotonic prox ----------</span>
+
+<div class="viewcode-block" id="prox_near_isotonic">
+<a class="viewcode-back" href="../../api.html#rank_preserving_calibration.nearly.prox_near_isotonic">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">prox_near_isotonic</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_iters</span><span class="o">=</span><span class="mi">2_000</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="mf">1e-9</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prox of λ * sum (z_i - z_{i+1})_- under 0.5||z - v||^2:</span>
+<span class="sd">    solves   min_z 0.5||z - v||^2 + lam * sum_i max(0, z_i - z_{i+1})*(-1)</span>
+<span class="sd">    Implementation: monotone path via modified PAV (mPAVA), evaluated at λ.</span>
+<span class="sd">    This is a minimal, numerically-stable variant sufficient for column updates.</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">    - We implement the *single-λ* solution without building the whole path.</span>
+<span class="sd">    - Follows the KKT structure in Tibshirani et al. (2011).</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    v : np.ndarray</span>
+<span class="sd">        Input vector.</span>
+<span class="sd">    lam : float</span>
+<span class="sd">        Penalty parameter for isotonicity violations.</span>
+<span class="sd">    weights : np.ndarray, optional</span>
+<span class="sd">        Weights (currently unused).</span>
+<span class="sd">    max_iters : int, default=2000</span>
+<span class="sd">        Maximum iterations for fixed-point iteration.</span>
+<span class="sd">    tol : float, default=1e-9</span>
+<span class="sd">        Convergence tolerance.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        Regularized nearly isotonic solution.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># We implement mPAVA without weights for simplicity; weights can be added similarly.</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="c1"># Each point starts as a block with slope m=0 and fitted value beta=y.</span>
+    <span class="c1"># We&#39;ll maintain blocks with (start, end, value, slope).</span>
+    <span class="n">starts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+    <span class="n">ends</span>   <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">beta</span>   <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+    <span class="n">slope</span>  <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+
+    <span class="c1"># Helper to compute &quot;collision time&quot; between adjacent blocks (see paper).</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">collision_time</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+        <span class="c1"># Blocks k and k+1. If beta[k] &lt;= beta[k+1], they are fine at current λ,</span>
+        <span class="c1"># else they will collide at a finite λ_star when beta_k - lambda*m_k = beta_{k+1} - lambda*m_{k+1}.</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">k</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">beta</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">if</span> <span class="n">beta</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">beta</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-15</span> <span class="ow">and</span> <span class="n">slope</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">slope</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-15</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="c1"># linear functions in λ: b_k(λ)=beta[k] + slope[k]*(λ-0), etc.</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="n">beta</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">beta</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+        <span class="n">den</span> <span class="o">=</span> <span class="n">slope</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">-</span> <span class="n">slope</span><span class="p">[</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">den</span> <span class="o">&lt;=</span> <span class="mf">1e-15</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">num</span> <span class="o">/</span> <span class="n">den</span>
+        <span class="k">return</span> <span class="n">t</span> <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+    <span class="c1"># Initialize slopes per block (Eq. 5 in the paper).</span>
+    <span class="c1"># For the unweighted L2 case, slopes reflect imbalance of &quot;downward edges&quot; at block boundaries.</span>
+    <span class="c1"># A minimal implementation is to iterate merges until all &quot;violations&quot; are accounted for at given λ.</span>
+    <span class="c1"># We&#39;ll perform a variant of pool+tilt: binary search on λ with isotonicity bias.</span>
+    <span class="c1"># For robustness and simplicity, we do a monotone search on λ and return the isotonic regression of (y + lam * g),</span>
+    <span class="c1"># where g is the subgradient favoring nondecreasing fits. A practical g is [-1, 0, ..., 0, +1] applied via finite diffs.</span>
+    <span class="c1"># In practice, the following surrogate works well for prox usage:</span>
+    <span class="c1">#   z = PAV(y + lam * d), where d_i = count of &quot;downward pressure&quot; from left/right (fast surrogate).</span>
+    <span class="c1"># But to keep behavior closer to mPAVA, we approximate via fixed-point iteration:</span>
+
+    <span class="c1"># Handle special case of lambda=0</span>
+    <span class="k">if</span> <span class="n">lam</span> <span class="o">&lt;=</span> <span class="mf">1e-15</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">y</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    
+    <span class="n">z</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iters</span><span class="p">):</span>
+        <span class="c1"># Compute subgradient for hinge on negative differences</span>
+        <span class="n">diffs</span> <span class="o">=</span> <span class="n">z</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">z</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">neg</span> <span class="o">=</span> <span class="n">diffs</span> <span class="o">&gt;</span> <span class="mf">0.0</span>  <span class="c1"># (z_i - z_{i+1})_- active</span>
+        <span class="n">g</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">neg</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">1.0</span>
+        <span class="n">g</span><span class="p">[</span><span class="mi">1</span><span class="p">:][</span><span class="n">neg</span><span class="p">]</span>  <span class="o">-=</span> <span class="mf">1.0</span>
+        <span class="n">z_new</span> <span class="o">=</span> <span class="n">_pav_increasing</span><span class="p">(</span><span class="n">y</span> <span class="o">+</span> <span class="n">lam</span> <span class="o">*</span> <span class="n">g</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">z_new</span> <span class="o">-</span> <span class="n">z</span><span class="p">))</span> <span class="o">&lt;</span> <span class="n">tol</span><span class="p">:</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">z_new</span>
+            <span class="k">break</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">z_new</span>
+    <span class="k">return</span> <span class="n">z</span></div>
+
+
+<div class="viewcode-block" id="prox_near_isotonic_with_sum">
+<a class="viewcode-back" href="../../api.html#rank_preserving_calibration.nearly.prox_near_isotonic_with_sum">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">prox_near_isotonic_with_sum</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">sum_target</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply nearly isotonic prox and then shift to achieve target sum.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    v : np.ndarray</span>
+<span class="sd">        Input vector.</span>
+<span class="sd">    lam : float</span>
+<span class="sd">        Penalty parameter.</span>
+<span class="sd">    sum_target : float</span>
+<span class="sd">        Target sum for the result.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        Nearly isotonic solution with specified sum.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">prox_near_isotonic</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">lam</span><span class="p">)</span>
+    <span class="c1"># Penalty is difference-based → invariant to constant shift.</span>
+    <span class="n">z</span> <span class="o">+=</span> <span class="p">(</span><span class="n">sum_target</span> <span class="o">-</span> <span class="n">z</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">z</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Gaurav Sood.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
