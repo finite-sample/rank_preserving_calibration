@@ -9,3 +9,6 @@
 /examples/__pycache__
 /examples/lowrank_gls/.ipynb_checkpoints
 /examples/lowrank_gls/__pycache__
+
+# Documentation build artifacts
+docs/_build/

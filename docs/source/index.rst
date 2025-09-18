@@ -1,9 +1,9 @@
 Rank-Preserving Calibration Documentation
 ==========================================
 
-.. image:: https://github.com/finite_sample/rank_preserving_calibration/workflows/CI/badge.svg
-   :target: https://github.com/finite_sample/rank_preserving_calibration/actions
-   :alt: CI Status
+.. image:: https://github.com/finite-sample/rank_preserving_calibration/actions/workflows/ci.yml/badge.svg
+   :target: https://github.com/finite-sample/rank_preserving_calibration/actions/workflows/ci.yml
+   :alt: Python application
 
 .. image:: https://img.shields.io/pypi/v/rank_preserving_calibration.svg
    :target: https://pypi.org/project/rank_preserving_calibration/
