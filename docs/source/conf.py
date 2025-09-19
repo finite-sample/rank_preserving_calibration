@@ -7,13 +7,22 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../../'))
 
+# Read metadata from pyproject.toml
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib  # Fallback for older Python versions
+
+with open(os.path.abspath('../../pyproject.toml'), 'rb') as f:
+    pyproject_data = tomllib.load(f)
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'rank_preserving_calibration'
-copyright = '2024, Gaurav Sood'
-author = 'Gaurav Sood'
-release = '0.4.1'
+project = pyproject_data['project']['name']
+author = pyproject_data['project']['authors'][0]['name']
+release = version = pyproject_data['project']['version']
+copyright = f'2024, {author}'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -25,6 +34,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
+    'sphinx_copybutton',
 ]
 
 templates_path = ['_templates']
@@ -35,6 +45,25 @@ exclude_patterns = []
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+
+# HTML theme options for better GitHub integration
+html_theme_options = {
+    'repository_url': 'https://github.com/finite-sample/rank_preserving_calibration',
+    'use_repository_button': True,
+    'use_issues_button': True,
+    'use_edit_page_button': True,
+    'path_to_docs': 'docs/source',
+    'repository_branch': 'main',
+}
+
+# HTML context for additional customization
+html_context = {
+    'display_github': True,
+    'github_user': 'finite-sample',
+    'github_repo': 'rank_preserving_calibration',
+    'github_version': 'main',
+    'conf_py_path': '/docs/source/',
+}
 
 # -- Extension configuration -------------------------------------------------
 
@@ -71,5 +100,10 @@ intersphinx_mapping = {
     'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
 }
+
+# sphinx-copybutton configuration
+copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+copybutton_prompt_is_regexp = True
+copybutton_remove_prompts = True
 
 # Additional configuration can be added here
