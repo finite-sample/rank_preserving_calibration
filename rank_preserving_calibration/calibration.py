@@ -8,17 +8,20 @@ calibration algorithms including Dykstra's alternating projections and ADMM.
 from __future__ import annotations
 
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Optional, Callable, List, Dict, Union
 
 import numpy as np
-from .nearly import project_near_isotonic_euclidean, prox_near_isotonic, prox_near_isotonic_with_sum
+
+from .nearly import (
+    project_near_isotonic_euclidean,
+    prox_near_isotonic,
+)
 
 
 @dataclass
 class CalibrationResult:
     """Result of rank-preserving calibration.
-    
     Attributes
     ----------
     Q : np.ndarray
@@ -45,10 +48,9 @@ class CalibrationResult:
     final_change: float
 
 
-@dataclass 
+@dataclass
 class ADMMResult:
     """Result from ADMM optimization.
-    
     Attributes
     ----------
     Q : np.ndarray
@@ -57,11 +59,11 @@ class ADMMResult:
         Whether ADMM converged.
     iterations : int
         Number of iterations performed.
-    objective_values : List[float]
+    objective_values : list[float]
         Objective function values over iterations.
-    primal_residuals : List[float]
+    primal_residuals : list[float]
         Primal residual norms over iterations.
-    dual_residuals : List[float]
+    dual_residuals : list[float]
         Dual residual norms over iterations.
     max_row_error : float
         Maximum row sum error.
@@ -75,9 +77,9 @@ class ADMMResult:
     Q: np.ndarray
     converged: bool
     iterations: int
-    objective_values: List[float]
-    primal_residuals: List[float]
-    dual_residuals: List[float]
+    objective_values: list[float]
+    primal_residuals: list[float]
+    dual_residuals: list[float]
     max_row_error: float
     max_col_error: float
     max_rank_violation: float
@@ -89,7 +91,7 @@ class CalibrationError(Exception):
     pass
 
 
-def _validate_inputs(P: np.ndarray, M: np.ndarray, max_iters: int, 
+def _validate_inputs(P: np.ndarray, M: np.ndarray, max_iters: int,
                     tol: float, feasibility_tol: float) -> tuple[int, int]:
     """Validate all inputs to calibration functions."""
     # Validate P
@@ -103,11 +105,11 @@ def _validate_inputs(P: np.ndarray, M: np.ndarray, max_iters: int,
         raise CalibrationError("P must not contain NaN or infinite values")
     if np.any(P < 0):
         raise CalibrationError("P must contain non-negative values")
-    
+
     N, J = P.shape
     if J < 2:
         raise CalibrationError("P must have at least 2 columns (classes)")
-    
+
     # Validate M
     if not isinstance(M, np.ndarray):
         raise CalibrationError("M must be a numpy array")
@@ -119,16 +121,17 @@ def _validate_inputs(P: np.ndarray, M: np.ndarray, max_iters: int,
         raise CalibrationError("M must not contain NaN or infinite values")
     if np.any(M < 0):
         raise CalibrationError("M must contain non-negative values")
-    
+
     # Check basic feasibility
     M_sum = float(M.sum())
     if abs(M_sum - N) > feasibility_tol * N:
         warnings.warn(
             f"Sum of M ({M_sum:.3f}) differs from N ({N}) by "
             f"{abs(M_sum - N):.3f}. Problem may be infeasible.",
-            UserWarning
+            UserWarning,
+            stacklevel=2
         )
-    
+
     # Validate other parameters
     if not isinstance(max_iters, int) or max_iters <= 0:
         raise CalibrationError("max_iters must be a positive integer")
@@ -136,7 +139,7 @@ def _validate_inputs(P: np.ndarray, M: np.ndarray, max_iters: int,
         raise CalibrationError("tol must be a positive number")
     if not isinstance(feasibility_tol, (int, float)) or feasibility_tol < 0:
         raise CalibrationError("feasibility_tol must be non-negative")
-        
+
     return N, J
 
 
@@ -144,30 +147,30 @@ def _project_row_simplex(rows: np.ndarray, eps: float = 1e-15) -> np.ndarray:
     """Project rows onto probability simplex with numerical stability."""
     N, J = rows.shape
     projected = np.empty_like(rows, dtype=np.float64)
-    
+
     for i in range(N):
         v = rows[i]
         u = np.sort(v)[::-1]
         cssv = np.cumsum(u) - 1.0
         ind = np.arange(1, J + 1, dtype=np.float64)
-        
+
         cond = u - cssv / ind > eps
         if not np.any(cond):
             rho = J - 1
         else:
             rho = np.nonzero(cond)[0][-1]
-            
+
         theta = cssv[rho] / (rho + 1)
         w = np.maximum(v - theta, 0.0)
-        
+
         sum_w = w.sum()
         if sum_w > eps:
             w /= sum_w
         else:
             w[:] = 1.0 / J
-            
+
         projected[i] = w
-    
+
     return projected
 
 
@@ -175,14 +178,14 @@ def _isotonic_regression(y: np.ndarray, rtol: float = 1e-12) -> np.ndarray:
     """Numerically stable isotonic regression using Pool Adjacent Violators."""
     if y.size <= 1:
         return y.astype(np.float64, copy=True)
-        
+
     y = y.astype(np.float64, copy=True)
     n = y.size
-    
+
     z = y.copy()
     w = np.ones(n, dtype=np.float64)
     i = 0
-    
+
     while i < n - 1:
         abs_tol = rtol * (abs(z[i]) + abs(z[i + 1]) + 1.0)
         if z[i] <= z[i + 1] + abs_tol:
@@ -193,14 +196,14 @@ def _isotonic_regression(y: np.ndarray, rtol: float = 1e-12) -> np.ndarray:
             new_z = (z[i] * w[i] + z[i + 1] * w[i + 1]) / new_w
             z[i] = new_z
             w[i] = new_w
-            
+
             z = np.delete(z, i + 1)
             w = np.delete(w, i + 1)
             n -= 1
-            
+
             if i > 0:
                 i -= 1
-    
+
     # Expand back to original length
     try:
         expanded = np.repeat(z, w.astype(int))
@@ -220,14 +223,13 @@ def _simple_isotonic_fallback(y: np.ndarray) -> np.ndarray:
     return result
 
 
-def _project_column_isotonic_sum(column: np.ndarray, 
+def _project_column_isotonic_sum(column: np.ndarray,
                                 P_column: np.ndarray,
                                 target_sum: float,
                                 rtol: float = 1e-12,
                                 eps: float = 1e-15,
-                                nearly: Optional[Dict] = None) -> np.ndarray:
+                                nearly: dict | None = None) -> np.ndarray:
     """Project column onto isotonic constraint with fixed sum.
-    
     Parameters
     ----------
     nearly : dict, optional
@@ -237,10 +239,10 @@ def _project_column_isotonic_sum(column: np.ndarray,
     """
     if column.size == 0:
         return column.copy()
-        
+
     idx = np.argsort(P_column)
     y = column[idx]
-    
+
     if nearly is not None and nearly.get("mode") == "epsilon":
         # Use nearly isotonic projection with epsilon slack
         slack_eps = nearly.get("eps", 1e-3)
@@ -248,47 +250,47 @@ def _project_column_isotonic_sum(column: np.ndarray,
     else:
         # Standard isotonic projection
         iso = _isotonic_regression(y, rtol=rtol)
-        
+
         current_sum = iso.sum()
         n = iso.size
-        
+
         if current_sum > eps:
             iso_scaled = iso * (target_sum / current_sum)
         else:
             iso_scaled = np.full_like(iso, target_sum / n)
-        
+
         iso_scaled = np.maximum(iso_scaled, 0.0)
         final_sum = iso_scaled.sum()
-        
+
         if final_sum > eps:
             iso_scaled *= (target_sum / final_sum)
         else:
             iso_scaled[:] = target_sum / n
-    
+
     projected = np.empty_like(column, dtype=np.float64)
     projected[idx] = iso_scaled
-    
+
     return projected
 
 
 def _compute_rank_violation(Q: np.ndarray, P: np.ndarray) -> float:
     """Compute maximum rank violation across all columns."""
     max_violation = 0.0
-    N, J = Q.shape
-    
+    _, J = Q.shape
+
     for j in range(J):
         idx = np.argsort(P[:, j])
         q_sorted = Q[idx, j]
-        
+
         if len(q_sorted) > 1:
             diffs = np.diff(q_sorted)
             violation = float(np.max(-diffs))
             max_violation = max(max_violation, violation)
-    
+
     return max_violation
 
 
-def _detect_cycling(Q_history: list, Q: np.ndarray, 
+def _detect_cycling(Q_history: list[np.ndarray], Q: np.ndarray,
                    cycle_tol: float = 1e-10) -> bool:
     """Detect if algorithm is cycling between solutions."""
     for prev_Q in Q_history:
@@ -305,21 +307,19 @@ def calibrate_dykstra(
     rtol: float = 1e-12,
     feasibility_tol: float = 0.1,
     verbose: bool = False,
-    callback: Optional[Callable[[int, float, np.ndarray], bool]] = None,
+    callback: Callable[[int, float, np.ndarray], bool] | None = None,
     detect_cycles: bool = True,
     cycle_window: int = 10,
-    nearly: Optional[Dict] = None
+    nearly: dict | None = None
 ) -> CalibrationResult:
     """Calibrate using Dykstra's alternating projections.
-    
     Projects between row simplex and column isotonic constraints using
     Dykstra's method with memory terms to ensure convergence to intersection.
-    
     Parameters
     ----------
     P : np.ndarray
         Input probability matrix of shape (N, J).
-    M : np.ndarray  
+    M : np.ndarray
         Target column sums of length J.
     max_iters : int, default 3000
         Maximum iterations.
@@ -341,82 +341,81 @@ def calibrate_dykstra(
         Nearly isotonic parameters. If provided, should contain:
         - "mode": "epsilon" for epsilon-slack near-isotonic constraints
         - "eps": slack parameter (default 1e-3)
-        
     Returns
     -------
     CalibrationResult
         Result with calibrated matrix and diagnostics.
     """
-    N, J = _validate_inputs(P, M, max_iters, tol, feasibility_tol)
-    
+    _, J = _validate_inputs(P, M, max_iters, tol, feasibility_tol)
+
     P = np.asarray(P, dtype=np.float64)
     M = np.asarray(M, dtype=np.float64)
-    
+
     # Initialize Dykstra variables
     Q = P.copy()
     U = np.zeros_like(P, dtype=np.float64)  # Row simplex memory
     V = np.zeros_like(P, dtype=np.float64)  # Column constraint memory
     Q_prev = np.empty_like(Q)
-    
-    Q_history = [] if detect_cycles else None
+
+    Q_history: list[np.ndarray] | None = [] if detect_cycles else None
     converged = False
     final_change = float('inf')
-    
+
     for iteration in range(1, max_iters + 1):
         np.copyto(Q_prev, Q)
-        
+
         # Project onto row simplex
         Y = Q + U
         Q = _project_row_simplex(Y)
         U = Y - Q
-        
-        # Project onto column constraints  
+
+        # Project onto column constraints
         Y = Q + V
         for j in range(J):
             Q[:, j] = _project_column_isotonic_sum(
                 Y[:, j], P[:, j], M[j], rtol=rtol, nearly=nearly
             )
         V = Y - Q
-        
+
         # Check convergence
         change_abs = np.linalg.norm(Q - Q_prev)
         norm_Q_prev = np.linalg.norm(Q_prev)
-        
-        final_change = change_abs / norm_Q_prev if norm_Q_prev > 0 else change_abs
-            
+
+        final_change = float(change_abs / norm_Q_prev) if norm_Q_prev > 0 else float(change_abs)
+
         if final_change < tol:
             converged = True
             if verbose:
                 print(f"Dykstra converged at iteration {iteration}")
             break
-            
+
         # Cycle detection
-        if detect_cycles and iteration > cycle_window:
+        if detect_cycles and iteration > cycle_window and Q_history is not None:
             if _detect_cycling(Q_history, Q):
-                warnings.warn(f"Cycling detected at iteration {iteration}", UserWarning)
+                warnings.warn(f"Cycling detected at iteration {iteration}", UserWarning, stacklevel=2)
                 break
-                
+
             Q_history.append(Q.copy())
             if len(Q_history) > cycle_window:
                 Q_history.pop(0)
-        
+
         if verbose and (iteration % 100 == 0 or iteration <= 10):
             print(f"Dykstra iteration {iteration}: change = {final_change:.2e}")
-            
+
         if callback is not None:
             if not callback(iteration, final_change, Q):
                 break
-    
+
     if not converged and iteration == max_iters:
-        warnings.warn(f"Dykstra failed to converge after {max_iters} iterations", UserWarning)
-    
+        warnings.warn(f"Dykstra failed to converge after {max_iters} iterations", UserWarning, stacklevel=2)
+
     # Compute diagnostics
     row_sums = Q.sum(axis=1)
     col_sums = Q.sum(axis=0)
     max_row_error = float(np.max(np.abs(row_sums - 1.0)))
     max_col_error = float(np.max(np.abs(col_sums - M)))
     max_rank_violation = _compute_rank_violation(Q, P)
-    
+
     return CalibrationResult(
         Q=Q,
         converged=converged,
@@ -437,13 +436,12 @@ def calibrate_admm(
     rtol: float = 1e-12,
     feasibility_tol: float = 0.1,
     verbose: bool = False,
-    nearly: Optional[Dict] = None
+    nearly: dict | None = None
 ) -> ADMMResult:
     """Calibrate using ADMM optimization.
-    
+
     Solves the constrained optimization problem using Alternating Direction
     Method of Multipliers with augmented Lagrangian.
-    
     Parameters
     ----------
     P : np.ndarray
@@ -466,37 +464,36 @@ def calibrate_admm(
         Nearly isotonic parameters. If provided, should contain:
         - "mode": "lambda" for lambda-penalty near-isotonic constraints
         - "lam": penalty parameter for isotonicity violations (default 1.0)
-        
     Returns
     -------
     ADMMResult
         Result with calibrated matrix and convergence history.
     """
     N, J = _validate_inputs(P, M, max_iters, tol, feasibility_tol)
-    
+
     P = np.asarray(P, dtype=np.float64)
     M = np.asarray(M, dtype=np.float64)
-    
+
     # Initialize ADMM variables
     Q = P.copy()
     Z1 = np.ones(N)  # Row sum auxiliary variables
     Z2 = M.copy()    # Column sum auxiliary variables
     lambda1 = np.zeros(N)  # Row constraint multipliers
     lambda2 = np.zeros(J)  # Column constraint multipliers
-    
+
     objective_values = []
     primal_residuals = []
     dual_residuals = []
-    
+
     for iteration in range(max_iters):
         Q_prev = Q.copy()
-        
+
         # Q-update: solve quadratic subproblem
         row_correction = (Z1 - lambda1/rho).reshape(-1, 1) @ np.ones((1, J))
         col_correction = np.ones((N, 1)) @ (Z2 - lambda2/rho).reshape(1, -1)
-        
+
         Q_unconstrained = (P + rho * (row_correction + col_correction)) / (1 + 2*rho)
-        
+
         # Apply rank-preserving and non-negativity constraints
         if nearly is not None and nearly.get("mode") == "lambda":
             # Use nearly isotonic prox with lambda penalty
@@ -513,61 +510,61 @@ def calibrate_admm(
                 idx = np.argsort(P[:, j])
                 iso_vals = _isotonic_regression(Q_unconstrained[idx, j], rtol=rtol)
                 Q_unconstrained[idx, j] = iso_vals
-            
+
         Q = np.maximum(Q_unconstrained, 0.0)
-        
+
         # Z-updates (constraint projections)
         row_sums = Q.sum(axis=1)
         col_sums = Q.sum(axis=0)
-        
+
         Z1_prev = Z1.copy()
         Z2_prev = Z2.copy()
-        
+
         Z1 = np.ones(N)  # Row sums constrained to 1
         Z2 = M.copy()    # Column sums constrained to M
-        
+
         # Multiplier updates
         lambda1 += rho * (row_sums - Z1)
         lambda2 += rho * (col_sums - Z2)
-        
+
         # Compute residuals
         primal_res = np.linalg.norm(np.concatenate([row_sums - Z1, col_sums - Z2]))
         dual_res1 = rho * np.linalg.norm(Z1 - Z1_prev)
         dual_res2 = rho * np.linalg.norm(Z2 - Z2_prev)
         dual_res = dual_res1 + dual_res2
-        
+
         obj_val = 0.5 * np.linalg.norm(Q - P)**2
-        
-        objective_values.append(obj_val)
-        primal_residuals.append(primal_res)
-        dual_residuals.append(dual_res)
-        
+
+        objective_values.append(float(obj_val))
+        primal_residuals.append(float(primal_res))
+        dual_residuals.append(float(dual_res))
+
         if verbose and iteration % 100 == 0:
             print(f"ADMM iter {iteration}: obj={obj_val:.3e}, "
                   f"primal={primal_res:.3e}, dual={dual_res:.3e}")
-        
+
         if primal_res < tol and dual_res < tol:
             converged = True
             break
     else:
         converged = False
-        
+
     if not converged and verbose:
-        warnings.warn(f"ADMM failed to converge after {max_iters} iterations", UserWarning)
-    
+        warnings.warn(f"ADMM failed to converge after {max_iters} iterations", UserWarning, stacklevel=2)
+
     # Calculate final change
     if iteration > 0:
         final_change = float(np.linalg.norm(Q - Q_prev) / (1.0 + np.linalg.norm(Q_prev)))
     else:
         final_change = float('inf')
-    
+
     # Final diagnostics
     row_sums = Q.sum(axis=1)
     col_sums = Q.sum(axis=0)
     max_row_error = float(np.max(np.abs(row_sums - 1.0)))
     max_col_error = float(np.max(np.abs(col_sums - M)))
     max_rank_violation = _compute_rank_violation(Q, P)
-    
+
     return ADMMResult(
         Q=Q,
         converged=converged,

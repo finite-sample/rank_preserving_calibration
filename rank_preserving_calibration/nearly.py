@@ -1,22 +1,24 @@
 # rank_preserving_calibration/nearly.py
-# MIT license – keep consistent with repo.
+# MIT license - keep consistent with repo.
 """
 Nearly isotonic regression utilities.
 
-This module provides "relaxed" isotonic constraints that allow for small 
+This module provides "relaxed" isotonic constraints that allow for small
 violations of monotonicity, useful when strict isotonicity is too restrictive.
 """
+from __future__ import annotations
+
 import numpy as np
 
 __all__ = [
     "project_near_isotonic_euclidean",
-    "prox_near_isotonic", 
+    "prox_near_isotonic",
     "prox_near_isotonic_with_sum"
 ]
 
 # ---------- Utilities ----------
 
-def _pav_increasing(y, w=None):
+def _pav_increasing(y: np.ndarray, w: np.ndarray | None = None) -> np.ndarray:
     """Pool Adjacent Violators (L2) for a 1D sequence (no deps)."""
     n = len(y)
     if w is None:
@@ -36,7 +38,8 @@ def _pav_increasing(y, w=None):
         # pool i and i+1
         new_w = weight[i] + weight[i+1]
         new_v = (weight[i]*v[i] + weight[i+1]*v[i+1]) / new_w
-        v[i] = new_v; weight[i] = new_w
+        v[i] = new_v
+        weight[i] = new_w
         # delete block i+1 by shifting left
         v[i+1:m-1] = v[i+2:m]
         weight[i+1:m-1] = weight[i+2:m]
@@ -53,13 +56,17 @@ def _pav_increasing(y, w=None):
         out[j0:j1] = v[b]
     return out
 
-# ---------- (A) Hard–slack nearly isotonic projection ----------
+# ---------- (A) Hard-slack nearly isotonic projection ----------
 
-def project_near_isotonic_euclidean(v, eps, sum_target=None, weights=None):
+def project_near_isotonic_euclidean(
+    v: np.ndarray,
+    eps: float,
+    sum_target: float | None = None,
+    weights: np.ndarray | None = None
+) -> np.ndarray:
     """
     Project v onto the set { z : z_{i+1} >= z_i - eps } in L2.
     If sum_target is given, add a uniform shift to make sum(z)=sum_target.
-    
     Parameters
     ----------
     v : np.ndarray
@@ -70,7 +77,6 @@ def project_near_isotonic_euclidean(v, eps, sum_target=None, weights=None):
         If provided, shift result to have this sum.
     weights : np.ndarray, optional
         Weights for weighted projection (currently unused in this implementation).
-        
     Returns
     -------
     np.ndarray
@@ -89,7 +95,13 @@ def project_near_isotonic_euclidean(v, eps, sum_target=None, weights=None):
 
 # ---------- (B) Penalized (lambda) nearly isotonic prox ----------
 
-def prox_near_isotonic(v, lam, weights=None, max_iters=2_000, tol=1e-9):
+def prox_near_isotonic(
+    v: np.ndarray,
+    lam: float,
+    weights: np.ndarray | None = None,
+    max_iters: int = 2_000,
+    tol: float = 1e-9
+) -> np.ndarray:
     """
     Prox of λ * sum (z_i - z_{i+1})_- under 0.5||z - v||^2:
     solves   min_z 0.5||z - v||^2 + lam * sum_i max(0, z_i - z_{i+1})*(-1)
@@ -99,7 +111,6 @@ def prox_near_isotonic(v, lam, weights=None, max_iters=2_000, tol=1e-9):
     Notes:
     - We implement the *single-λ* solution without building the whole path.
     - Follows the KKT structure in Tibshirani et al. (2011).
-    
     Parameters
     ----------
     v : np.ndarray
@@ -112,7 +123,6 @@ def prox_near_isotonic(v, lam, weights=None, max_iters=2_000, tol=1e-9):
         Maximum iterations for fixed-point iteration.
     tol : float, default=1e-9
         Convergence tolerance.
-        
     Returns
     -------
     np.ndarray
@@ -124,13 +134,13 @@ def prox_near_isotonic(v, lam, weights=None, max_iters=2_000, tol=1e-9):
 
     # Each point starts as a block with slope m=0 and fitted value beta=y.
     # We'll maintain blocks with (start, end, value, slope).
-    starts = list(range(n))
-    ends   = list(range(1, n+1))
+    # starts = list(range(n))  # Unused in current implementation
+    # ends   = list(range(1, n+1))  # Unused in current implementation
     beta   = [float(y[i]) for i in range(n)]
     slope  = [0.0 for _ in range(n)]
 
     # Helper to compute "collision time" between adjacent blocks (see paper).
-    def collision_time(k):
+    def collision_time(k: int) -> float:
         # Blocks k and k+1. If beta[k] <= beta[k+1], they are fine at current λ,
         # else they will collide at a finite λ_star when beta_k - lambda*m_k = beta_{k+1} - lambda*m_{k+1}.
         if k < 0 or k >= len(beta)-1:
@@ -158,7 +168,7 @@ def prox_near_isotonic(v, lam, weights=None, max_iters=2_000, tol=1e-9):
     # Handle special case of lambda=0
     if lam <= 1e-15:
         return y.copy()
-    
+
     z = y.copy()
     for _ in range(max_iters):
         # Compute subgradient for hinge on negative differences
@@ -174,10 +184,9 @@ def prox_near_isotonic(v, lam, weights=None, max_iters=2_000, tol=1e-9):
         z = z_new
     return z
 
-def prox_near_isotonic_with_sum(v, lam, sum_target):
+def prox_near_isotonic_with_sum(v: np.ndarray, lam: float, sum_target: float) -> np.ndarray:
     """
     Apply nearly isotonic prox and then shift to achieve target sum.
-    
     Parameters
     ----------
     v : np.ndarray
@@ -186,7 +195,6 @@ def prox_near_isotonic_with_sum(v, lam, sum_target):
         Penalty parameter.
     sum_target : float
         Target sum for the result.
-        
     Returns
     -------
     np.ndarray

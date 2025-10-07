@@ -1,9 +1,11 @@
 import numpy as np
+
 from examples.data_helpers import (
-    create_test_case,
     create_realistic_classifier_case,
     create_survey_reweighting_case,
+    create_test_case,
 )
+
 
 def _assert_state_unchanged(before):
     after = np.random.get_state()

@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rank_preserving_calibration"
-version = "0.4.1"
+version = "0.5.0"
 description = "Rank-preserving calibration of multiclass probabilities via Dykstra's projections and ADMM."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 authors = [
   { name = "Gaurav Sood", email = "contact@gsood.com" },
 ]
@@ -17,14 +17,13 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-  "numpy>=1.18",
+  "numpy>=1.20",
 ]
 
 [project.optional-dependencies]
@@ -43,3 +42,42 @@ Documentation = "https://finite_sample.github.io/rank_preserving_calibration/"
 where = ["."]
 include = ["rank_preserving_calibration*"]
 exclude = ["examples*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+extend-select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "RUF",    # Ruff-specific rules
+]
+ignore = [
+    "E501",   # line too long, handled by formatter
+    "B008",   # do not perform function calls in argument defaults
+    "C901",   # too complex
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["rank_preserving_calibration"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true

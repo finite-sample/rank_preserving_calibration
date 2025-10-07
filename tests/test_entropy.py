@@ -1,7 +1,8 @@
 """Tests for entropy computation in analyze_calibration_result."""
 
-import numpy as np
 from types import SimpleNamespace
+
+import numpy as np
 
 from examples.data_helpers import analyze_calibration_result
 
