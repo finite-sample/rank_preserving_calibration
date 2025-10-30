@@ -29,8 +29,8 @@ dependencies = [
 [project.optional-dependencies]
 testing = ["pytest>=6.0", "pytest-cov", "hypothesis>=6.0"]
 examples = ["scipy>=1.0", "matplotlib>=3.0", "jupyter", "seaborn"]
-docs = ["sphinx>=4.0", "sphinx-rtd-theme", "sphinx-copybutton", "nbsphinx"]
-all = ["pytest>=6.0", "pytest-cov", "hypothesis>=6.0", "scipy>=1.0", "matplotlib>=3.0", "jupyter", "seaborn", "sphinx>=4.0", "sphinx-rtd-theme", "sphinx-copybutton", "nbsphinx"]
+docs = ["sphinx>=4.0", "furo", "sphinx-copybutton", "nbsphinx"]
+all = ["pytest>=6.0", "pytest-cov", "hypothesis>=6.0", "scipy>=1.0", "matplotlib>=3.0", "jupyter", "seaborn", "sphinx>=4.0", "furo", "sphinx-copybutton", "nbsphinx"]
 
 [project.urls]
 Homepage = "https://github.com/finite_sample/rank_preserving_calibration"

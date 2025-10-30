@@ -8,7 +8,12 @@ calibration using a simplified but realistic scenario.
 
 import numpy as np
 
-from rank_preserving_calibration import calibrate_dykstra
+from rank_preserving_calibration import (
+    calibrate_dykstra,
+    distance_metrics,
+    feasibility_metrics,
+    isotonic_metrics,
+)
 
 
 def create_focused_example():
@@ -194,7 +199,64 @@ def show_practical_recommendations():
     print("  • Ensure convergence (increase max_iters if needed)")
 
 
+def demonstrate_comprehensive_metrics():
+    """Show comprehensive evaluation using the metrics module."""
+
+    print("\n=== Comprehensive Metrics Evaluation ===")
+    print()
+
+    # Get test data and calibration results
+    P, M = create_focused_example()
+
+    # Compare strict vs nearly isotonic
+    result_strict = calibrate_dykstra(P, M, max_iters=1000, verbose=False)
+    result_nearly = calibrate_dykstra(P, M, nearly={"mode": "epsilon", "eps": 0.05}, max_iters=1000, verbose=False)
+
+    print("Detailed Metrics Comparison:")
+    print("-" * 70)
+
+    for label, result in [("Strict Isotonic", result_strict), ("Nearly Isotonic", result_nearly)]:
+        print(f"\n{label} Results:")
+        print("-" * 30)
+
+        # 1. Feasibility metrics
+        feasibility = feasibility_metrics(result.Q, M)
+        print("  Constraint Satisfaction:")
+        print(f"    Max row error: {feasibility['row']['max_abs_error']:.2e}")
+        print(f"    Max column error: {feasibility['col']['max_abs_error']:.2e}")
+        print(f"    Min probability: {feasibility['row']['min_value']:.3f}")
+
+        # 2. Isotonic metrics
+        isotonic = isotonic_metrics(result.Q, P)
+        print("  Rank Preservation:")
+        print(f"    Max rank violation: {isotonic['max_rank_violation']:.4f}")
+        print(f"    Total violation mass: {isotonic['total_violation_mass']:.4f}")
+        print(f"    Mean flat fraction: {isotonic['mean_flat_fraction']:.3f}")
+
+        # 3. Distance metrics
+        distances = distance_metrics(result.Q, P)
+        print("  Calibration Changes:")
+        print(f"    Frobenius distance: {distances['frobenius']:.3f}")
+        print(f"    Mean absolute change: {distances['mean_abs']:.4f}")
+        print(f"    Max absolute change: {distances['max_abs']:.4f}")
+
+        # 4. Algorithm performance
+        print("  Algorithm Performance:")
+        print(f"    Converged: {result.converged}")
+        print(f"    Iterations: {result.iterations}")
+        print(f"    Final change: {result.final_change:.2e}")
+
+    print("\n" + "="*70)
+    print("Metrics Interpretation Guide:")
+    print("• Row/Column errors should be < 1e-6 for well-converged solutions")
+    print("• Rank violations measure departure from monotonicity (0 = perfect)")
+    print("• Smaller distance metrics = less change from original predictions")
+    print("• Nearly isotonic often achieves similar constraint satisfaction")
+    print("  with less change from original predictions")
+
+
 if __name__ == "__main__":
     P, result_strict, result_nearly = analyze_rank_preservation()
     demonstrate_flexibility()
     show_practical_recommendations()
+    demonstrate_comprehensive_metrics()

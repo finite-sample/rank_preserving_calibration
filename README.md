@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/rank_preserving_calibration.svg)](https://pypi.org/project/rank_preserving_calibration/)
 [![Documentation](https://img.shields.io/badge/docs-github.io-blue)](https://finite-sample.github.io/rank_preserving_calibration/)
 [![PyPI Downloads](https://static.pepy.tech/badge/rank_preserving_calibration)](https://pepy.tech/projects/rank_preserving_calibration)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Survey statisticians and machine learning practitioners often need to adjust the predicted class probabilities from a classifier so that they match known population totals (column marginals). Simple post-hoc methods that apply separate logit shifts or raking to each class can scramble the ranking of individuals within a class when there are three or more classes. This package implements a rank-preserving calibration procedure that projects probabilities onto the intersection of two convex sets:
@@ -74,6 +74,89 @@ result = calibrate_admm(P, M, nearly=nearly_params)
 ```
 
 The returned `CalibrationResult` contains the calibrated matrix `Q` with the same shape as `P`. Each row of `Q` sums to one, the column sums match `M`, and within each column the entries are sorted in non-decreasing order according to the order implied by the original `P`.
+
+## Evaluation and Metrics
+
+After calibration, it's important to validate that the constraints are satisfied and understand the impact on prediction quality. This package provides comprehensive metrics for evaluation:
+
+### Constraint Validation
+
+```python
+from rank_preserving_calibration import feasibility_metrics, isotonic_metrics
+
+# Check constraint satisfaction
+feasibility = feasibility_metrics(result.Q, M)
+print(f"Max row error: {feasibility['row']['max_abs_error']}")
+print(f"Max column error: {feasibility['col']['max_abs_error']}")
+
+# Check rank preservation  
+isotonic = isotonic_metrics(result.Q, P)
+print(f"Max rank violation: {isotonic['max_rank_violation']}")
+print(f"Violation mass: {isotonic['total_violation_mass']}")
+```
+
+### Calibration Quality Assessment
+
+```python
+from rank_preserving_calibration import distance_metrics, nll, brier
+
+# Measure calibration changes
+distances = distance_metrics(result.Q, P)
+print(f"Frobenius distance: {distances['frobenius']}")
+print(f"Max change: {distances['max_abs']}")
+
+# Evaluate with labeled data (if available)
+if y_true is not None:
+    original_nll = nll(y_true, P)
+    calibrated_nll = nll(y_true, result.Q) 
+    print(f"NLL improvement: {original_nll - calibrated_nll}")
+```
+
+### Available Metrics
+
+| Function | Purpose |
+| --- | --- |
+| `feasibility_metrics(Q, M)` | Validate row (simplex) and column (marginal) constraints |
+| `isotonic_metrics(Q, P)` | Check rank preservation and measure violations |
+| `distance_metrics(Q, P)` | Quantify changes between original and calibrated probabilities |
+| `tie_group_variance(Q, P)` | Assess handling of tied predictions (useful for `ties='group'`) |
+| `nll(y, probs)` | Negative log-likelihood (requires true labels) |
+| `brier(y, probs)` | Brier score (requires true labels) |  
+| `top_label_ece(y, probs)` | Expected calibration error for top predictions |
+| `classwise_ece(y, probs)` | Per-class calibration error analysis |
+| `sharpness_metrics(probs)` | Prediction confidence and entropy analysis |
+| `auc_deltas(y, P, Q)` | One-vs-rest AUC changes after calibration |
+
+### Complete Evaluation Workflow
+
+```python
+import numpy as np
+from rank_preserving_calibration import (
+    calibrate_dykstra, feasibility_metrics, isotonic_metrics, 
+    distance_metrics, nll, top_label_ece
+)
+
+# Calibrate
+result = calibrate_dykstra(P, M)
+
+# 1. Validate constraints
+feasibility = feasibility_metrics(result.Q, M)
+isotonic = isotonic_metrics(result.Q, P) 
+print(f"Converged: {result.converged}")
+print(f"Row constraint satisfied: {feasibility['row']['max_abs_error'] < 1e-6}")
+print(f"Rank preserved: {isotonic['max_rank_violation'] < 1e-6}")
+
+# 2. Assess calibration impact
+distances = distance_metrics(result.Q, P)
+print(f"Average change per probability: {distances['mean_abs']:.4f}")
+
+# 3. Evaluate predictive quality (if labels available)
+if y_true is not None:
+    ece_before = top_label_ece(y_true, P)
+    ece_after = top_label_ece(y_true, result.Q)
+    print(f"Calibration error before: {ece_before['ece']:.3f}")
+    print(f"Calibration error after: {ece_after['ece']:.3f}")
+```
 
 ## Functions
 

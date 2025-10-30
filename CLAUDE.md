@@ -187,3 +187,4 @@ The repository uses GitHub Actions for CI with:
 - Documentation building and deployment to GitHub Pages
 
 No additional linting, formatting, or coverage tools are configured in the current setup.
+- you are on mac os locally

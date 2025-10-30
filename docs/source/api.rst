@@ -32,6 +32,14 @@ Nearly Isotonic Functions
    :undoc-members:
    :show-inheritance:
 
+Evaluation and Metrics
+----------------------
+
+.. automodule:: rank_preserving_calibration.metrics
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Exception Classes
 -----------------
 

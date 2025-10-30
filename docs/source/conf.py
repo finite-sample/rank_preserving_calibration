@@ -44,17 +44,14 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
 html_static_path = ["_static"]
 
-# HTML theme options for better GitHub integration
+# HTML theme options for Furo
 html_theme_options = {
-    "repository_url": "https://github.com/finite-sample/rank_preserving_calibration",
-    "use_repository_button": True,
-    "use_issues_button": True,
-    "use_edit_page_button": True,
-    "path_to_docs": "docs/source",
-    "repository_branch": "main",
+    "source_repository": "https://github.com/finite-sample/rank_preserving_calibration",
+    "source_branch": "main",
+    "source_directory": "docs/source/",
 }
 
 # HTML context for additional customization
