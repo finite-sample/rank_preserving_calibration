@@ -5,7 +5,6 @@ analyzing calibration results.  They are kept outside of the main
 package to avoid pulling example dependencies into the installation.
 """
 
-
 import numpy as np
 
 __all__ = [
@@ -16,8 +15,9 @@ __all__ = [
 ]
 
 
-def create_test_case(case_type: str, N: int = 50, J: int = 4,
-                    seed: int | None = None, **kwargs) -> tuple[np.ndarray, np.ndarray]:
+def create_test_case(
+    case_type: str, N: int = 50, J: int = 4, seed: int | None = None, **kwargs
+) -> tuple[np.ndarray, np.ndarray]:
     """Create synthetic test cases for calibration algorithms.
 
     Parameters
@@ -64,22 +64,22 @@ def create_test_case(case_type: str, N: int = 50, J: int = 4,
             return sp_dirichlet.rvs(alpha, size=size, random_state=rng)
         return rng.dirichlet(alpha, size=size)
 
-    if case_type == 'random':
-        concentration = kwargs.get('concentration', 1.0)
+    if case_type == "random":
+        concentration = kwargs.get("concentration", 1.0)
         alpha = np.full(J, concentration)
         P = _dirichlet(alpha, size=N)
         M = np.full(J, N / J)  # Equal marginals
 
-    elif case_type == 'skewed':
-        skew_factor = kwargs.get('skew_factor', 3.0)
+    elif case_type == "skewed":
+        skew_factor = kwargs.get("skew_factor", 3.0)
         alpha = np.ones(J)
         alpha[0] *= skew_factor  # Make first class more likely
         alpha[-1] *= skew_factor  # Make last class more likely
         P = _dirichlet(alpha, size=N)
         M = np.full(J, N / J)
 
-    elif case_type == 'linear':
-        noise_level = kwargs.get('noise_level', 0.1)
+    elif case_type == "linear":
+        noise_level = kwargs.get("noise_level", 0.1)
         P = np.zeros((N, J))
 
         for j in range(J):
@@ -99,8 +99,8 @@ def create_test_case(case_type: str, N: int = 50, J: int = 4,
         P = P / P.sum(axis=1, keepdims=True)
         M = np.full(J, N / J)
 
-    elif case_type == 'challenging':
-        infeasibility_level = kwargs.get('infeasibility_level', 0.2)
+    elif case_type == "challenging":
+        infeasibility_level = kwargs.get("infeasibility_level", 0.2)
         # Create extreme probabilities using beta distribution
         P = rng.beta(0.3, 0.3, size=(N, J))
         P = P / P.sum(axis=1, keepdims=True)
@@ -113,15 +113,20 @@ def create_test_case(case_type: str, N: int = 50, J: int = 4,
         M = np.maximum(M, 0.1)  # Ensure positive marginals
 
     else:
-        raise ValueError(f"Unknown case type: {case_type}. "
-                        "Choose from: 'random', 'skewed', 'linear', 'challenging'")
+        raise ValueError(
+            f"Unknown case type: {case_type}. "
+            "Choose from: 'random', 'skewed', 'linear', 'challenging'"
+        )
 
     return P, M
 
 
-def create_realistic_classifier_case(N: int = 500, J: int = 4,
-                                    miscalibration_type: str = "overconfident",
-                                    seed: int | None = None) -> tuple[np.ndarray, np.ndarray, dict]:
+def create_realistic_classifier_case(
+    N: int = 500,
+    J: int = 4,
+    miscalibration_type: str = "overconfident",
+    seed: int | None = None,
+) -> tuple[np.ndarray, np.ndarray, dict]:
     """Create realistic classifier probabilities that need calibration.
 
     Simulates a multiclass classifier (e.g., image classification, NLP) where
@@ -161,7 +166,7 @@ def create_realistic_classifier_case(N: int = 500, J: int = 4,
         base_probs = np.array([0.4, 0.3, 0.2, 0.1])[:J]
     else:
         # Generate decreasing probabilities for more classes
-        base_probs = np.array([0.4 * (0.7 ** i) for i in range(J)])
+        base_probs = np.array([0.4 * (0.7**i) for i in range(J)])
 
     true_class_probs = base_probs / base_probs.sum()
 
@@ -177,12 +182,12 @@ def create_realistic_classifier_case(N: int = 500, J: int = 4,
         if miscalibration_type == "overconfident":
             correct_prob = rng.beta(8, 2)  # High confidence when correct
             remaining = 1 - correct_prob
-            other_probs = _dirichlet([0.5] * (J-1), size=1)[0] * remaining
+            other_probs = _dirichlet([0.5] * (J - 1), size=1)[0] * remaining
 
         elif miscalibration_type == "underconfident":
             correct_prob = rng.beta(2, 2) * 0.6 + 0.3  # 0.3 to 0.9 range
             remaining = 1 - correct_prob
-            other_probs = _dirichlet([1.5] * (J-1), size=1)[0] * remaining
+            other_probs = _dirichlet([1.5] * (J - 1), size=1)[0] * remaining
 
         elif miscalibration_type == "biased":
             if true_class == 0:  # Underdetects class 0
@@ -193,7 +198,7 @@ def create_realistic_classifier_case(N: int = 500, J: int = 4,
                 correct_prob = rng.beta(3, 2)
 
             remaining = 1 - correct_prob
-            other_probs = _dirichlet([1] * (J-1), size=1)[0] * remaining
+            other_probs = _dirichlet([1] * (J - 1), size=1)[0] * remaining
 
         # Build probability vector
         prob_vector = np.zeros(J)
@@ -209,13 +214,15 @@ def create_realistic_classifier_case(N: int = 500, J: int = 4,
         "true_class_distribution": true_class_probs,
         "observed_accuracy": np.mean(np.argmax(P, axis=1) == true_labels),
         "mean_confidence": np.mean(np.max(P, axis=1)),
-        "true_labels": true_labels
+        "true_labels": true_labels,
     }
 
     return P, M, info
 
 
-def create_survey_reweighting_case(N: int = 1000, seed: int | None = None) -> tuple[np.ndarray, np.ndarray, dict]:
+def create_survey_reweighting_case(
+    N: int = 1000, seed: int | None = None
+) -> tuple[np.ndarray, np.ndarray, dict]:
     """Create survey data that needs demographic reweighting.
 
     Simulates a political poll or market research survey where the sample
@@ -282,7 +289,7 @@ def create_survey_reweighting_case(N: int = 1000, seed: int | None = None) -> tu
         "sample_bias": sample_demographics - true_demographics,
         "response_patterns": response_patterns,
         "raw_results": P.mean(axis=0),
-        "target_results": M / N
+        "target_results": M / N,
     }
 
     return P, M, info
@@ -331,26 +338,25 @@ def analyze_calibration_result(P: np.ndarray, result, M: np.ndarray) -> dict:
         "constraint_satisfaction": {
             "max_row_error": np.max(np.abs(row_sums - 1.0)),
             "max_col_error": np.max(np.abs(col_sums - M)),
-            "rank_preservation": result.max_rank_violation
+            "rank_preservation": result.max_rank_violation,
         },
         "prediction_impact": {
             "prediction_changes": prediction_changes,
             "original_confidence": original_confidence,
             "calibrated_confidence": calibrated_confidence,
-            "confidence_change": calibrated_confidence - original_confidence
+            "confidence_change": calibrated_confidence - original_confidence,
         },
         "distribution_impact": {
             "original_entropy": original_entropy,
             "calibrated_entropy": calibrated_entropy,
             "entropy_change": calibrated_entropy - original_entropy,
             "total_change": np.linalg.norm(Q - P),
-            "relative_change": np.linalg.norm(Q - P) / np.linalg.norm(P)
+            "relative_change": np.linalg.norm(Q - P) / np.linalg.norm(P),
         },
         "marginal_correction": marginal_correction,
         "convergence": {
             "converged": result.converged,
             "iterations": result.iterations,
-            "final_change": result.final_change
-        }
+            "final_change": result.final_change,
+        },
     }
-

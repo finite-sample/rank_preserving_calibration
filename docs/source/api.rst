@@ -40,12 +40,6 @@ Exception Classes
    :undoc-members:
    :show-inheritance:
 
-Legacy Functions
-----------------
-
-.. autofunction:: rank_preserving_calibration.calibrate_rank_preserving
-
-.. autofunction:: rank_preserving_calibration.admm_rank_preserving_simplex_marginals
 
 Complete Module Documentation
 -----------------------------

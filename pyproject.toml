@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rank_preserving_calibration"
-version = "0.5.0"
+version = "0.6.0"
 description = "Rank-preserving calibration of multiclass probabilities via Dykstra's projections and ADMM."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -27,10 +27,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-testing = ["pytest>=6.0", "pytest-cov"]
+testing = ["pytest>=6.0", "pytest-cov", "hypothesis>=6.0"]
 examples = ["scipy>=1.0", "matplotlib>=3.0", "jupyter", "seaborn"]
 docs = ["sphinx>=4.0", "sphinx-rtd-theme", "sphinx-copybutton", "nbsphinx"]
-all = ["pytest>=6.0", "pytest-cov", "scipy>=1.0", "matplotlib>=3.0", "jupyter", "seaborn", "sphinx>=4.0", "sphinx-rtd-theme", "sphinx-copybutton", "nbsphinx"]
+all = ["pytest>=6.0", "pytest-cov", "hypothesis>=6.0", "scipy>=1.0", "matplotlib>=3.0", "jupyter", "seaborn", "sphinx>=4.0", "sphinx-rtd-theme", "sphinx-copybutton", "nbsphinx"]
 
 [project.urls]
 Homepage = "https://github.com/finite_sample/rank_preserving_calibration"
@@ -63,21 +63,9 @@ ignore = [
     "B008",   # do not perform function calls in argument defaults
     "C901",   # too complex
 ]
+# Allow specific Greek letters used in mathematical notation
+allowed-confusables = ["ρ", "λ"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["rank_preserving_calibration"]
 
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-strict_equality = true

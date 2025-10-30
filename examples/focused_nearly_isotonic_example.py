@@ -30,7 +30,7 @@ def create_focused_example():
     # Create different types of predictions
     for i in range(N):
         if i < 10:  # Well-behaved predictions
-            probs = np.array([0.6 - 0.05*i, 0.3, 0.1 + 0.05*i])
+            probs = np.array([0.6 - 0.05 * i, 0.3, 0.1 + 0.05 * i])
         elif i < 15:  # Some uncertainty cases
             probs = np.array([0.4, 0.4, 0.2]) + 0.1 * np.random.randn(3)
         else:  # Clear preferences
@@ -54,8 +54,9 @@ def analyze_rank_preservation():
     result_strict = calibrate_dykstra(P, M, verbose=False, max_iters=1000)
 
     # Method 2: Nearly isotonic
-    result_nearly = calibrate_dykstra(P, M, nearly={"mode": "epsilon", "eps": 0.1},
-                                    verbose=False, max_iters=1000)
+    result_nearly = calibrate_dykstra(
+        P, M, nearly={"mode": "epsilon", "eps": 0.1}, verbose=False, max_iters=1000
+    )
 
     print("=== Rank Preservation Analysis ===")
     print(f"Input shape: {P.shape}, Target marginals: {M}")
@@ -69,7 +70,7 @@ def analyze_rank_preservation():
     # Show results for both methods
     methods = [
         ("Strict Isotonic", result_strict),
-        ("Nearly Isotonic (ε=0.1)", result_nearly)
+        ("Nearly Isotonic (ε=0.1)", result_nearly),
     ]
 
     print("Results Summary:")
@@ -96,9 +97,9 @@ def analyze_rank_preservation():
     print("-" * 60)
 
     for i in range(min(8, len(P))):
-        orig_str = f"[{P[i,0]:.2f}, {P[i,1]:.2f}, {P[i,2]:.2f}]"
-        strict_str = f"[{result_strict.Q[i,0]:.2f}, {result_strict.Q[i,1]:.2f}, {result_strict.Q[i,2]:.2f}]"
-        nearly_str = f"[{result_nearly.Q[i,0]:.2f}, {result_nearly.Q[i,1]:.2f}, {result_nearly.Q[i,2]:.2f}]"
+        orig_str = f"[{P[i, 0]:.2f}, {P[i, 1]:.2f}, {P[i, 2]:.2f}]"
+        strict_str = f"[{result_strict.Q[i, 0]:.2f}, {result_strict.Q[i, 1]:.2f}, {result_strict.Q[i, 2]:.2f}]"
+        nearly_str = f"[{result_nearly.Q[i, 0]:.2f}, {result_nearly.Q[i, 1]:.2f}, {result_nearly.Q[i, 2]:.2f}]"
 
         print(f"{i:>3} {orig_str:>20} {strict_str:>20} {nearly_str:>20}")
 
@@ -108,7 +109,9 @@ def analyze_rank_preservation():
         nearly_pred = np.argmax(result_nearly.Q[i])
 
         if orig_pred != strict_pred or orig_pred != nearly_pred:
-            print(f"    → Predictions: Orig={orig_pred}, Strict={strict_pred}, Nearly={nearly_pred}")
+            print(
+                f"    → Predictions: Orig={orig_pred}, Strict={strict_pred}, Nearly={nearly_pred}"
+            )
 
     return P, result_strict, result_nearly
 
@@ -123,7 +126,9 @@ def demonstrate_flexibility():
     epsilon_values = [0.0, 0.05, 0.1, 0.2]
     results = []
 
-    print(f"{'Epsilon':>8} {'Converged':>10} {'Iterations':>11} {'Total Change':>13} {'Max Rank Viol':>14}")
+    print(
+        f"{'Epsilon':>8} {'Converged':>10} {'Iterations':>11} {'Total Change':>13} {'Max Rank Viol':>14}"
+    )
     print("-" * 60)
 
     for eps in epsilon_values:
@@ -131,13 +136,20 @@ def demonstrate_flexibility():
             result = calibrate_dykstra(P, M, verbose=False, max_iters=500)
             method_name = "Strict"
         else:
-            result = calibrate_dykstra(P, M, nearly={"mode": "epsilon", "eps": eps},
-                                     verbose=False, max_iters=500)
+            result = calibrate_dykstra(
+                P,
+                M,
+                nearly={"mode": "epsilon", "eps": eps},
+                verbose=False,
+                max_iters=500,
+            )
             method_name = f"ε={eps}"
 
         total_change = np.linalg.norm(result.Q - P)
 
-        print(f"{method_name:>8} {'Yes' if result.converged else 'No':>10} {result.iterations:>11} {total_change:>13.3f} {result.max_rank_violation:>14.4f}")
+        print(
+            f"{method_name:>8} {'Yes' if result.converged else 'No':>10} {result.iterations:>11} {total_change:>13.3f} {result.max_rank_violation:>14.4f}"
+        )
         results.append((eps, result))
 
     print()

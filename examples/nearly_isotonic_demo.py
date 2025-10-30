@@ -34,7 +34,9 @@ def compare_isotonic_vs_nearly_isotonic():
 
     # Nearly isotonic with ADMM lambda penalty
     nearly_lambda = {"mode": "lambda", "lam": 2.0}
-    result_nearly_lam = calibrate_admm(P, M, nearly=nearly_lambda, verbose=False, max_iters=500)
+    result_nearly_lam = calibrate_admm(
+        P, M, nearly=nearly_lambda, verbose=False, max_iters=500
+    )
 
     print("Results Summary:")
     print("-" * 50)
@@ -42,14 +44,24 @@ def compare_isotonic_vs_nearly_isotonic():
     methods = [
         ("Strict Isotonic (Dykstra)", result_strict),
         ("Nearly Isotonic ε=0.05 (Dykstra)", result_nearly_eps),
-        ("Nearly Isotonic λ=2.0 (ADMM)", result_nearly_lam)
+        ("Nearly Isotonic λ=2.0 (ADMM)", result_nearly_lam),
     ]
 
     for name, result in methods:
-        row_error = result.max_row_error if hasattr(result, 'max_row_error') else np.max(np.abs(result.Q.sum(axis=1) - 1.0))
-        col_error = result.max_col_error if hasattr(result, 'max_col_error') else np.max(np.abs(result.Q.sum(axis=0) - M))
-        rank_viol = result.max_rank_violation if hasattr(result, 'max_rank_violation') else 0.0
-        converged = result.converged if hasattr(result, 'converged') else True
+        row_error = (
+            result.max_row_error
+            if hasattr(result, "max_row_error")
+            else np.max(np.abs(result.Q.sum(axis=1) - 1.0))
+        )
+        col_error = (
+            result.max_col_error
+            if hasattr(result, "max_col_error")
+            else np.max(np.abs(result.Q.sum(axis=0) - M))
+        )
+        rank_viol = (
+            result.max_rank_violation if hasattr(result, "max_rank_violation") else 0.0
+        )
+        converged = result.converged if hasattr(result, "converged") else True
         total_change = np.linalg.norm(result.Q - P)
 
         print(f"{name}:")
@@ -90,6 +102,7 @@ def visualize_nearly_isotonic_effects():
     try:
         import matplotlib.pyplot as plt
         import seaborn as sns
+
         sns.set_style("whitegrid")
     except ImportError:
         print("Matplotlib/seaborn not available for visualization")
@@ -102,13 +115,13 @@ def visualize_nearly_isotonic_effects():
 
     # Create clear trends with some noise
     for j in range(3):
-        trend = np.linspace(0.1 + 0.2*j, 0.7 + 0.1*j, N)
+        trend = np.linspace(0.1 + 0.2 * j, 0.7 + 0.1 * j, N)
         noise = 0.15 * np.random.randn(N)
         P[:, j] = np.clip(trend + noise, 0.05, 0.95)
 
     # Normalize rows
     P = P / P.sum(axis=1, keepdims=True)
-    M = np.full(3, N/3)  # Equal marginals
+    M = np.full(3, N / 3)  # Equal marginals
 
     # Compare methods
     result_strict = calibrate_dykstra(P, M, verbose=False)
@@ -123,16 +136,16 @@ def visualize_nearly_isotonic_effects():
     matrices = [P, result_strict.Q, result_nearly.Q]
 
     for ax, title, matrix in zip(axes, titles, matrices, strict=False):
-        im = ax.imshow(matrix.T, aspect='auto', cmap='viridis', interpolation='nearest')
+        im = ax.imshow(matrix.T, aspect="auto", cmap="viridis", interpolation="nearest")
         ax.set_title(title)
-        ax.set_xlabel('Instance')
-        ax.set_ylabel('Class')
+        ax.set_xlabel("Instance")
+        ax.set_ylabel("Class")
         ax.set_yticks(range(3))
-        ax.set_yticklabels([f'Class {i}' for i in range(3)])
+        ax.set_yticklabels([f"Class {i}" for i in range(3)])
         plt.colorbar(im, ax=ax, fraction=0.046)
 
     plt.tight_layout()
-    plt.savefig('nearly_isotonic_comparison.png', dpi=150, bbox_inches='tight')
+    plt.savefig("nearly_isotonic_comparison.png", dpi=150, bbox_inches="tight")
     print("Visualization saved as 'nearly_isotonic_comparison.png'")
     plt.show()
 
@@ -147,5 +160,5 @@ def visualize_nearly_isotonic_effects():
 
 if __name__ == "__main__":
     compare_isotonic_vs_nearly_isotonic()
-    print("\n" + "="*60 + "\n")
+    print("\n" + "=" * 60 + "\n")
     visualize_nearly_isotonic_effects()

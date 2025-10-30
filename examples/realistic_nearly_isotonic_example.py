@@ -31,7 +31,9 @@ def create_credit_scoring_scenario():
 
     # True risk categories with realistic proportions
     # In practice, these might come from historical data
-    true_categories = np.random.choice([0, 1, 2], size=N, p=[0.6, 0.3, 0.1])  # Most are low-risk
+    true_categories = np.random.choice(
+        [0, 1, 2], size=N, p=[0.6, 0.3, 0.1]
+    )  # Most are low-risk
 
     # Simulate ML model predictions that are generally good but not perfectly calibrated
     P = np.zeros((N, 3))
@@ -83,9 +85,15 @@ def demonstrate_nearly_isotonic_benefits():
     analysis_strict = analyze_calibration_result(P, result_strict, M)
 
     print(f"Converged: {result_strict.converged}")
-    print(f"Prediction changes: {analysis_strict['prediction_impact']['prediction_changes']:.1%}")
-    print(f"Confidence change: {analysis_strict['prediction_impact']['confidence_change']:.3f}")
-    print(f"Total probability change: {analysis_strict['distribution_impact']['total_change']:.3f}")
+    print(
+        f"Prediction changes: {analysis_strict['prediction_impact']['prediction_changes']:.1%}"
+    )
+    print(
+        f"Confidence change: {analysis_strict['prediction_impact']['confidence_change']:.3f}"
+    )
+    print(
+        f"Total probability change: {analysis_strict['distribution_impact']['total_change']:.3f}"
+    )
     print(f"Rank violations: {result_strict.max_rank_violation:.2e}")
     print()
 
@@ -97,10 +105,18 @@ def demonstrate_nearly_isotonic_benefits():
     analysis_nearly = analyze_calibration_result(P, result_nearly, M)
 
     print(f"Converged: {result_nearly.converged}")
-    print(f"Prediction changes: {analysis_nearly['prediction_impact']['prediction_changes']:.1%}")
-    print(f"Confidence change: {analysis_nearly['prediction_impact']['confidence_change']:.3f}")
-    print(f"Total probability change: {analysis_nearly['distribution_impact']['total_change']:.3f}")
-    print(f"Max rank violation: {result_nearly.max_rank_violation:.3f} (within ε tolerance)")
+    print(
+        f"Prediction changes: {analysis_nearly['prediction_impact']['prediction_changes']:.1%}"
+    )
+    print(
+        f"Confidence change: {analysis_nearly['prediction_impact']['confidence_change']:.3f}"
+    )
+    print(
+        f"Total probability change: {analysis_nearly['distribution_impact']['total_change']:.3f}"
+    )
+    print(
+        f"Max rank violation: {result_nearly.max_rank_violation:.3f} (within ε tolerance)"
+    )
     print()
 
     # Method 3: Nearly isotonic with larger slack for comparison
@@ -111,10 +127,18 @@ def demonstrate_nearly_isotonic_benefits():
     analysis_loose = analyze_calibration_result(P, result_loose, M)
 
     print(f"Converged: {result_loose.converged}")
-    print(f"Prediction changes: {analysis_loose['prediction_impact']['prediction_changes']:.1%}")
-    print(f"Confidence change: {analysis_loose['prediction_impact']['confidence_change']:.3f}")
-    print(f"Total probability change: {analysis_loose['distribution_impact']['total_change']:.3f}")
-    print(f"Max rank violation: {result_loose.max_rank_violation:.3f} (within ε tolerance)")
+    print(
+        f"Prediction changes: {analysis_loose['prediction_impact']['prediction_changes']:.1%}"
+    )
+    print(
+        f"Confidence change: {analysis_loose['prediction_impact']['confidence_change']:.3f}"
+    )
+    print(
+        f"Total probability change: {analysis_loose['distribution_impact']['total_change']:.3f}"
+    )
+    print(
+        f"Max rank violation: {result_loose.max_rank_violation:.3f} (within ε tolerance)"
+    )
     print()
 
     # Analysis: When is nearly isotonic better?
@@ -123,28 +147,42 @@ def demonstrate_nearly_isotonic_benefits():
 
     print("1. Preservation of Model Confidence:")
     print(f"   Original avg confidence: {np.mean(np.max(P, axis=1)):.3f}")
-    print(f"   Strict isotonic:        {analysis_strict['prediction_impact']['calibrated_confidence']:.3f}")
-    print(f"   Nearly isotonic (ε=0.02): {analysis_nearly['prediction_impact']['calibrated_confidence']:.3f}")
-    print(f"   Nearly isotonic (ε=0.05): {analysis_loose['prediction_impact']['calibrated_confidence']:.3f}")
+    print(
+        f"   Strict isotonic:        {analysis_strict['prediction_impact']['calibrated_confidence']:.3f}"
+    )
+    print(
+        f"   Nearly isotonic (ε=0.02): {analysis_nearly['prediction_impact']['calibrated_confidence']:.3f}"
+    )
+    print(
+        f"   Nearly isotonic (ε=0.05): {analysis_loose['prediction_impact']['calibrated_confidence']:.3f}"
+    )
     print()
 
     print("2. Flexibility vs. Constraints:")
-    strict_change = analysis_strict['distribution_impact']['total_change']
-    nearly_change = analysis_nearly['distribution_impact']['total_change']
-    loose_change = analysis_loose['distribution_impact']['total_change']
+    strict_change = analysis_strict["distribution_impact"]["total_change"]
+    nearly_change = analysis_nearly["distribution_impact"]["total_change"]
+    loose_change = analysis_loose["distribution_impact"]["total_change"]
 
     print("   Total change from original (lower = better):")
     print(f"   Strict isotonic:        {strict_change:.3f}")
-    print(f"   Nearly isotonic (ε=0.02): {nearly_change:.3f} ({((nearly_change-strict_change)/strict_change*100):+.1f}%)")
-    print(f"   Nearly isotonic (ε=0.05): {loose_change:.3f} ({((loose_change-strict_change)/strict_change*100):+.1f}%)")
+    print(
+        f"   Nearly isotonic (ε=0.02): {nearly_change:.3f} ({((nearly_change - strict_change) / strict_change * 100):+.1f}%)"
+    )
+    print(
+        f"   Nearly isotonic (ε=0.05): {loose_change:.3f} ({((loose_change - strict_change) / strict_change * 100):+.1f}%)"
+    )
     print()
 
     print("3. Individual Case Analysis:")
     # Find cases where nearly isotonic makes different decisions
-    diff_decisions = np.argmax(result_strict.Q, axis=1) != np.argmax(result_nearly.Q, axis=1)
+    diff_decisions = np.argmax(result_strict.Q, axis=1) != np.argmax(
+        result_nearly.Q, axis=1
+    )
     n_diff = np.sum(diff_decisions)
 
-    print(f"   Cases with different predictions: {n_diff} ({n_diff/len(P)*100:.1f}%)")
+    print(
+        f"   Cases with different predictions: {n_diff} ({n_diff / len(P) * 100:.1f}%)"
+    )
 
     if n_diff > 0:
         # Look at a few examples
@@ -157,7 +195,9 @@ def demonstrate_nearly_isotonic_benefits():
             nearly_pred = np.argmax(result_nearly.Q[idx])
             true_cat = true_categories[idx]
 
-            print(f"     Case {idx}: True={true_cat}, Original={orig_pred}, Strict={strict_pred}, Nearly={nearly_pred}")
+            print(
+                f"     Case {idx}: True={true_cat}, Original={orig_pred}, Strict={strict_pred}, Nearly={nearly_pred}"
+            )
             print(f"       Original probs: {P[idx].round(3)}")
             print(f"       Strict result:  {result_strict.Q[idx].round(3)}")
             print(f"       Nearly result:  {result_nearly.Q[idx].round(3)}")
@@ -167,9 +207,13 @@ def demonstrate_nearly_isotonic_benefits():
     print()
     print("Use Nearly Isotonic Calibration When:")
     print("• Model predictions have good discrimination but need marginal adjustment")
-    print("• Strict rank preservation is less important than preserving model confidence")
+    print(
+        "• Strict rank preservation is less important than preserving model confidence"
+    )
     print("• You have domain knowledge that small rank violations are acceptable")
-    print("• The model has inherent uncertainty that strict isotonic constraints ignore")
+    print(
+        "• The model has inherent uncertainty that strict isotonic constraints ignore"
+    )
     print()
     print("Use Strict Isotonic Calibration When:")
     print("• Rank preservation is critical (e.g., regulatory requirements)")
@@ -189,8 +233,22 @@ def compare_computational_aspects():
 
     methods = [
         ("Strict Isotonic", lambda: calibrate_dykstra(P, M, verbose=False)),
-        ("Nearly Isotonic (ε=0.02)", lambda: calibrate_dykstra(P, M, nearly={"mode": "epsilon", "eps": 0.02}, verbose=False)),
-        ("Nearly Isotonic (ADMM λ=1.0)", lambda: calibrate_admm(P, M, nearly={"mode": "lambda", "lam": 1.0}, verbose=False, max_iters=200)),
+        (
+            "Nearly Isotonic (ε=0.02)",
+            lambda: calibrate_dykstra(
+                P, M, nearly={"mode": "epsilon", "eps": 0.02}, verbose=False
+            ),
+        ),
+        (
+            "Nearly Isotonic (ADMM λ=1.0)",
+            lambda: calibrate_admm(
+                P,
+                M,
+                nearly={"mode": "lambda", "lam": 1.0},
+                verbose=False,
+                max_iters=200,
+            ),
+        ),
     ]
 
     for name, method in methods:
@@ -204,7 +262,9 @@ def compare_computational_aspects():
         avg_time = np.mean(times)
         std_time = np.std(times)
 
-        print(f"{name:30s}: {avg_time:.4f} ± {std_time:.4f} seconds, {result.iterations} iterations")
+        print(
+            f"{name:30s}: {avg_time:.4f} ± {std_time:.4f} seconds, {result.iterations} iterations"
+        )
 
 
 if __name__ == "__main__":

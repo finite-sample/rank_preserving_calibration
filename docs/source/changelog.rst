@@ -34,6 +34,3 @@ Version 0.3.x and Earlier
 * Robust numerical implementation with PAV algorithm
 * Comprehensive test suite
 
-**Legacy Support:**
-* Maintained backward compatibility with ``calibrate_rank_preserving`` function
-* Legacy ADMM function ``admm_rank_preserving_simplex_marginals``

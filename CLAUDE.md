@@ -128,9 +128,6 @@ result = calibrate_admm(P, M, nearly=nearly_params)
 - Lambda-penalty approach is more experimental and may need tuning
 - Both approaches can be less restrictive than strict isotonic constraints
 
-### Legacy Compatibility
-- `calibrate_rank_preserving` → `calibrate_dykstra` 
-- `admm_rank_preserving_simplex_marginals` → `calibrate_dykstra`
 
 ### Common Parameter Patterns
 - `P`: Input probability matrix (N×J)

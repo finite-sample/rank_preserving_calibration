@@ -19,8 +19,18 @@ Example
 >>> print(f"Max row error: {result.max_row_error:.2e}")
 """
 
-# Version info
-__version__ = "0.5.0"
+# Version info - imported dynamically from pyproject.toml
+try:
+    from importlib.metadata import PackageNotFoundError, version
+except ImportError:
+    # For Python < 3.8 compatibility (though project requires 3.11+)
+    from importlib_metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("rank_preserving_calibration")
+except PackageNotFoundError:
+    # Fallback for development environments
+    __version__ = "unknown"
 __author__ = "Gaurav Sood"
 __email__ = "gsood07@gmail.com"
 
@@ -40,19 +50,13 @@ from .nearly import (
     prox_near_isotonic_with_sum,
 )
 
-# Legacy aliases for backward compatibility
-calibrate_rank_preserving = calibrate_dykstra
-admm_rank_preserving_simplex_marginals = calibrate_dykstra
-
 # Define what gets imported with "from rank_preserving_calibration import *"
 __all__ = [
     "ADMMResult",
     "CalibrationError",
     "CalibrationResult",
-    "admm_rank_preserving_simplex_marginals",
     "calibrate_admm",
     "calibrate_dykstra",
-    "calibrate_rank_preserving",
     "project_near_isotonic_euclidean",
     "prox_near_isotonic",
     "prox_near_isotonic_with_sum",

@@ -29,7 +29,7 @@ The most common use case is calibrating multiclass probabilities using Dykstra's
    print(f"Original column sums: {P.sum(axis=0)}")
    print(f"Target column sums: {M}")
    print(f"Calibrated column sums: {calibrated_probs.sum(axis=0)}")
-   print(f"Converged in {result.n_iter} iterations")
+   print(f"Converged in {result.iterations} iterations")
 
 Understanding the Result
 ------------------------
@@ -37,9 +37,9 @@ Understanding the Result
 The :class:`~rank_preserving_calibration.CalibrationResult` object contains:
 
 * ``Q``: The calibrated probability matrix
-* ``n_iter``: Number of iterations until convergence
+* ``iterations``: Number of iterations until convergence
 * ``converged``: Whether the algorithm converged
-* ``final_error``: Final constraint violation error
+* ``final_change``: Final relative change between iterations
 
 .. code-block:: python
 
@@ -47,7 +47,7 @@ The :class:`~rank_preserving_calibration.CalibrationResult` object contains:
    if result.converged:
        print("Algorithm converged successfully")
    else:
-       print(f"Algorithm did not converge (error: {result.final_error:.2e})")
+       print(f"Algorithm did not converge (change: {result.final_change:.2e})")
 
 Alternative Algorithm: ADMM
 ----------------------------

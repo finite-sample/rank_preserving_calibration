@@ -162,11 +162,6 @@ See `examples/` directory for comprehensive examples including:
 python -m pytest tests/ -v
 ```
 
-## Legacy Compatibility
-
-For backward compatibility, the following aliases are available:
-- `calibrate_rank_preserving` → `calibrate_dykstra`
-- `admm_rank_preserving_simplex_marginals` → `calibrate_dykstra`
 
 ## License
 

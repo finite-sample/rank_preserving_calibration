@@ -61,9 +61,9 @@ Compare Dykstra's method with ADMM:
    result_admm = calibrate_admm(P, M, max_iters=1000, tol=1e-6)
    admm_time = time.time() - start_time
    
-   print(f"Dykstra: {result_dykstra.n_iter} iterations, {dykstra_time:.3f}s")
-   print(f"ADMM: {result_admm.n_iter} iterations, {admm_time:.3f}s")
-   print(f"Final errors - Dykstra: {result_dykstra.final_error:.2e}, ADMM: {result_admm.final_error:.2e}")
+   print(f"Dykstra: {result_dykstra.iterations} iterations, {dykstra_time:.3f}s")
+   print(f"ADMM: {result_admm.iterations} iterations, {admm_time:.3f}s")
+   print(f"Final changes - Dykstra: {result_dykstra.final_change:.2e}, ADMM: {result_admm.final_change:.2e}")
 
 Nearly Isotonic Calibration
 ----------------------------
@@ -90,8 +90,8 @@ When strict isotonic constraints are too restrictive:
    nearly_params = {"mode": "epsilon", "eps": 0.05}
    result_nearly = calibrate_dykstra(P_challenging, M_challenging, nearly=nearly_params)
    
-   print(f"Strict isotonic error: {result_strict.final_error:.2e}")
-   print(f"Nearly isotonic error: {result_nearly.final_error:.2e}")
+   print(f"Strict isotonic change: {result_strict.final_change:.2e}")
+   print(f"Nearly isotonic change: {result_nearly.final_change:.2e}")
    
    # Compare distances from original
    strict_distance = np.linalg.norm(result_strict.Q - P_challenging, 'fro')
@@ -158,12 +158,12 @@ Dealing with infeasible or near-infeasible problems:
    
    # This will issue a feasibility warning but still attempt calibration
    result_infeasible = calibrate_dykstra(P_edge, M_infeasible)
-   print(f"Final error: {result_infeasible.final_error:.2e}")
+   print(f"Final change: {result_infeasible.final_change:.2e}")
    
    # Case 2: Using nearly isotonic to handle difficult constraints
    nearly_params = {"mode": "epsilon", "eps": 0.1}
    result_nearly_infeasible = calibrate_dykstra(P_edge, M_infeasible, nearly=nearly_params)
-   print(f"Nearly isotonic final error: {result_nearly_infeasible.final_error:.2e}")
+   print(f"Nearly isotonic final change: {result_nearly_infeasible.final_change:.2e}")
 
 Performance Monitoring
 ----------------------
@@ -224,9 +224,9 @@ Processing multiple calibration problems efficiently:
        results.append(result)
        
        if result.converged:
-           print(f"  Converged in {result.n_iter} iterations")
+           print(f"  Converged in {result.iterations} iterations")
        else:
-           print(f"  Did not converge (error: {result.final_error:.2e})")
+           print(f"  Did not converge (change: {result.final_change:.2e})")
 
 Integration with scikit-learn
 -----------------------------
