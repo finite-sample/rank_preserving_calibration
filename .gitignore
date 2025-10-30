@@ -13,4 +13,3 @@
 # Documentation build artifacts
 docs/_build/
 /.hypothesis
-CLAUDE.md

@@ -9,10 +9,7 @@ import sys
 sys.path.insert(0, os.path.abspath("../../"))
 
 # Read metadata from pyproject.toml
-try:
-    import tomllib  # Python 3.11+
-except ImportError:
-    import tomli as tomllib  # Fallback for older Python versions
+import tomllib  # Python 3.11+
 
 with open(os.path.abspath("../../pyproject.toml"), "rb") as f:
     pyproject_data = tomllib.load(f)

@@ -180,7 +180,7 @@ open _build/html/index.html
 ## CI/CD and Quality
 
 The repository uses GitHub Actions for CI with:
-- Python 3.10 testing environment  
+- Python 3.11+ testing environment  
 - Installation via `pip install -e ".[testing]"`
 - Test execution with `python -m pytest tests/ -v`
 - Automated workflows for both CI testing and releases
