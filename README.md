@@ -253,3 +253,11 @@ This software is released under the terms of the MIT license.
 ## Author
 
 Gaurav Sood `<gsood07@gmail.com>`
+
+## 🔗 Adjacent Repositories
+
+- [finite-sample/calibre](https://github.com/finite-sample/calibre) — Advanced Calibration Models
+- [finite-sample/fairlex](https://github.com/finite-sample/fairlex) — Leximin Calibration
+- [finite-sample/adaptive-eb](https://github.com/finite-sample/adaptive-eb) — Adaptive Entropy Balancing via Multiplicative Weights
+- [finite-sample/optimal_classification_cutoffs](https://github.com/finite-sample/optimal_classification_cutoffs) — Script for calculating the optimal cut-off for max. F1-score, etc.
+- [finite-sample/pyppur](https://github.com/finite-sample/pyppur) — pyppur: Python Projection Pursuit Unsupervised (Dimension) Reduction To Min. Reconstruction Loss or DIstance DIstortion
