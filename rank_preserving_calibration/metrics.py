@@ -1,8 +1,6 @@
 # rank_preserving_calibration/metrics.py
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 
 

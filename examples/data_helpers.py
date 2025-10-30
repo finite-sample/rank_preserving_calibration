@@ -43,7 +43,7 @@ def create_test_case(
 
     Returns
     -------
-    Tuple[np.ndarray, np.ndarray]
+    tuple[np.ndarray, np.ndarray]
         (P, M) where P is the probability matrix and M is target marginals.
 
     Examples
@@ -145,7 +145,7 @@ def create_realistic_classifier_case(
 
     Returns
     -------
-    Tuple[np.ndarray, np.ndarray, dict]
+    tuple[np.ndarray, np.ndarray, dict]
         P (predicted probabilities), M (true class frequencies), info dict.
     """
     # Optional scipy import
@@ -237,7 +237,7 @@ def create_survey_reweighting_case(
 
     Returns
     -------
-    Tuple[np.ndarray, np.ndarray, dict]
+    tuple[np.ndarray, np.ndarray, dict]
         P (survey responses), M (target demographics), info dict.
     """
     # Optional scipy import
