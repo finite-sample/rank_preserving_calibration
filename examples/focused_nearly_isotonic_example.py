@@ -210,12 +210,17 @@ def demonstrate_comprehensive_metrics():
 
     # Compare strict vs nearly isotonic
     result_strict = calibrate_dykstra(P, M, max_iters=1000, verbose=False)
-    result_nearly = calibrate_dykstra(P, M, nearly={"mode": "epsilon", "eps": 0.05}, max_iters=1000, verbose=False)
+    result_nearly = calibrate_dykstra(
+        P, M, nearly={"mode": "epsilon", "eps": 0.05}, max_iters=1000, verbose=False
+    )
 
     print("Detailed Metrics Comparison:")
     print("-" * 70)
 
-    for label, result in [("Strict Isotonic", result_strict), ("Nearly Isotonic", result_nearly)]:
+    for label, result in [
+        ("Strict Isotonic", result_strict),
+        ("Nearly Isotonic", result_nearly),
+    ]:
         print(f"\n{label} Results:")
         print("-" * 30)
 
@@ -246,7 +251,7 @@ def demonstrate_comprehensive_metrics():
         print(f"    Iterations: {result.iterations}")
         print(f"    Final change: {result.final_change:.2e}")
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Metrics Interpretation Guide:")
     print("• Row/Column errors should be < 1e-6 for well-converged solutions")
     print("• Rank violations measure departure from monotonicity (0 = perfect)")
