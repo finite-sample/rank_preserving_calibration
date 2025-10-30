@@ -69,3 +69,6 @@ allowed-confusables = ["ρ", "λ"]
 [tool.ruff.lint.isort]
 known-first-party = ["rank_preserving_calibration"]
 
+[tool.ruff.lint.per-file-ignores]
+"rank_preserving_calibration/metrics.py" = ["E702", "RUF034"]  # Allow compact coding style with semicolons in metrics
+
