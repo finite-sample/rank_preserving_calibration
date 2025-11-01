@@ -1,9 +1,9 @@
 ## Rank Preserving Calibration of Multiclass Probabilities
 
-[![Python application](https://github.com/finite-sample/rank_preserving_calibration/actions/workflows/ci.yml/badge.svg)](https://github.com/finite-sample/rank_preserving_calibration/actions/workflows/ci.yml)
-[![PyPI version](https://img.shields.io/pypi/v/rank_preserving_calibration.svg)](https://pypi.org/project/rank_preserving_calibration/)
-[![Documentation](https://img.shields.io/badge/docs-github.io-blue)](https://finite-sample.github.io/rank_preserving_calibration/)
-[![PyPI Downloads](https://static.pepy.tech/badge/rank_preserving_calibration)](https://pepy.tech/projects/rank_preserving_calibration)
+[![Python application](https://github.com/finite-sample/rank-preserving-calibration/actions/workflows/ci.yml/badge.svg)](https://github.com/finite-sample/rank-preserving-calibration/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/rank-preserving-calibration.svg)](https://pypi.org/project/rank-preserving-calibration/)
+[![Documentation](https://img.shields.io/badge/docs-github.io-blue)](https://finite-sample.github.io/rank-preserving-calibration/)
+[![PyPI Downloads](https://static.pepy.tech/badge/rank-preserving-calibration)](https://pepy.tech/projects/rank-preserving-calibration)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -28,7 +28,7 @@ An **ADMM optimization** implementation is also provided as an alternative solve
 ## Installation
 
 ```bash
-pip install rank_preserving_calibration
+pip install rank-preserving-calibration
 ```
 
 The only runtime dependency is `numpy`. Optional dependencies include `scipy` (for enhanced test case generation) and `matplotlib` (for examples).
