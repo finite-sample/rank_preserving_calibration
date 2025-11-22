@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.21.1"]
+build-backend = "hatchling.build"
 
 [project]
 name = "rank_preserving_calibration"
@@ -27,10 +27,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-testing = ["pytest>=6.0", "pytest-cov", "hypothesis>=6.0"]
-examples = ["scipy>=1.0", "matplotlib>=3.0", "jupyter", "seaborn"]
-docs = ["sphinx>=4.0", "furo", "sphinx-copybutton", "nbsphinx"]
-all = ["pytest>=6.0", "pytest-cov", "hypothesis>=6.0", "scipy>=1.0", "matplotlib>=3.0", "jupyter", "seaborn", "sphinx>=4.0", "furo", "sphinx-copybutton", "nbsphinx"]
+docs = [
+    "sphinx>=7.0",
+    "furo>=2024.1.29",
+    "sphinx-autodoc-typehints>=1.25",
+    "sphinx-copybutton>=0.5",
+    "myst-parser>=2.0",
+    "nbsphinx>=0.9",
+]
 
 [project.urls]
 Homepage = "https://github.com/finite_sample/rank_preserving_calibration"
@@ -38,10 +42,13 @@ Source = "https://github.com/finite_sample/rank_preserving_calibration"
 Issues = "https://github.com/finite_sample/rank_preserving_calibration/issues"
 Documentation = "https://finite_sample.github.io/rank_preserving_calibration/"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["rank_preserving_calibration*"]
-exclude = ["examples*"]
+[tool.hatch.build.targets.wheel]
+packages = ["rank_preserving_calibration"]
+
+[dependency-groups]
+dev = ["pytest>=7.0", "pytest-cov>=4.0", "ruff>=0.7.0", "mypy>=1.0", "pre-commit>=3.0"]
+test = ["pytest>=7.0", "pytest-cov>=4.0", "hypothesis>=6.0"]
+examples = ["scipy>=1.0", "matplotlib>=3.0", "jupyter", "seaborn"]
 
 [tool.ruff]
 target-version = "py311"
