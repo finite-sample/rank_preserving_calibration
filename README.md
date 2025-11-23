@@ -245,14 +245,9 @@ See `examples/` directory for comprehensive examples including:
 python -m pytest tests/ -v
 ```
 
-
 ## License
 
 This software is released under the terms of the MIT license.
-
-## Author
-
-Gaurav Sood `<gsood07@gmail.com>`
 
 ## 🔗 Adjacent Repositories
 
