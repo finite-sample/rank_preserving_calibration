@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling>=1.21.1"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.9.13,<0.10.0"]
+build-backend = "uv_build"
 
 [project]
 name = "rank_preserving_calibration"
@@ -42,8 +42,9 @@ Source = "https://github.com/finite_sample/rank_preserving_calibration"
 Issues = "https://github.com/finite_sample/rank_preserving_calibration/issues"
 Documentation = "https://finite_sample.github.io/rank_preserving_calibration/"
 
-[tool.hatch.build.targets.wheel]
-packages = ["rank_preserving_calibration"]
+[tool.uv.build-backend]
+module-name = "rank_preserving_calibration"
+module-root = ""
 
 [dependency-groups]
 dev = ["pytest>=7.0", "pytest-cov>=4.0", "ruff>=0.7.0", "mypy>=1.0", "pre-commit>=3.0"]
